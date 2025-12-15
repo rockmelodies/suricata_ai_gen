@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suricata规则生成与验证工具</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(17, 153, 142, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .history-item:hover {
+            background: #e9ecef;
+            cursor: pointer;
+        }
+
+        .history-item .time {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .history-item .vuln-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>🛡️ Suricata规则生成与验证工具</h1>
+            <p>基于AI的智能规则生成、优化与自动化验证平台</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="panel full-width">
+            <div class="tabs">
+                <button class="tab" :class="{active: activeTab === 'generate'}" @click="activeTab = 'generate'">
+                    规则生成
+                </button>
+                <button class="tab" :class="{active: activeTab === 'history'}" @click="activeTab = 'history'; loadRules()">
+                    历史记录
+                </button>
+            </div>
+        </div>
+
+        <!-- Generate Tab -->
+        <div v-if="activeTab === 'generate'" class="container">
+            <!-- Left Panel: Rule Generation -->
+            <div class="panel">
+                <h2 class="panel-title">📝 漏洞信息输入</h2>
+                
+                <div class="form-group">
+                    <label>漏洞名称 *</label>
+                    <input v-model="vulnInfo.name" type="text" placeholder="例如: 用友NC SQL注入漏洞">
+                </div>
+
+                <div class="form-group">
+                    <label>漏洞类型</label>
+                    <select v-model="vulnInfo.type">
+                        <option value="">请选择</option>
+                        <option value="sql_injection">SQL注入</option>
+                        <option value="command_injection">命令注入</option>
+                        <option value="file_upload">文件上传</option>
+                        <option value="path_traversal">路径穿越</option>
+                        <option value="ssrf">SSRF</option>
+                        <option value="unauthorized_access">未授权访问</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>漏洞描述 *</label>
+                    <textarea v-model="vulnInfo.description" rows="4" 
+                              placeholder="描述漏洞的详细信息、影响范围、利用方式等"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>POC示例</label>
+                    <textarea v-model="vulnInfo.poc" rows="6" 
+                              placeholder="粘贴POC代码或HTTP请求示例"></textarea>
+                </div>
+
+                <button class="btn btn-primary" @click="generateRule" :disabled="loading.generate">
+                    <span v-if="loading.generate" class="loading"></span>
+                    {{ loading.generate ? '生成中...' : '🤖 AI生成规则' }}
+                </button>
+            </div>
+
+            <!-- Right Panel: Generated Rule & Validation -->
+            <div class="panel">
+                <h2 class="panel-title">⚙️ 规则操作</h2>
+
+                <div v-if="messages.generate" :class="'alert alert-' + messages.generate.type">
+                    {{ messages.generate.text }}
+                </div>
+
+                <div class="form-group">
+                    <label>生成的Suricata规则</label>
+                    <textarea v-model="currentRule" rows="8" 
+                              placeholder="AI生成的规则将显示在这里..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>PCAP文件路径</label>
+                    <input v-model="pcapPath" type="text" 
+                           placeholder="/home/kali/pcap_check">
+                </div>
+
+                <button class="btn btn-success" @click="validateRule" :disabled="!currentRule || loading.validate">
+                    <span v-if="loading.validate" class="loading"></span>
+                    {{ loading.validate ? '验证中...' : '✓ 验证规则' }}
+                </button>
+
+                <button class="btn btn-warning" @click="optimizeRule" :disabled="!currentRule || loading.optimize">
+                    <span v-if="loading.optimize" class="loading"></span>
+                    {{ loading.optimize ? '优化中...' : '🔧 AI优化' }}
+                </button>
+
+                <!-- Validation Results -->
+                <div v-if="validationResult" class="result-box">
+                    <h3 style="margin-bottom: 15px;">验证结果</h3>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="number">{{ validationResult.matched ? '✓' : '✗' }}</div>
+                            <div class="label">匹配状态</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="number">{{ validationResult.alert_count }}</div>
+                            <div class="label">告警数量</div>
+                        </div>
+                    </div>
+                    
+                    <div v-if="validationResult.details && validationResult.details.length > 0" style="margin-top: 15px;">
+                        <strong>告警详情:</strong>
+                        <pre>{{ validationResult.details.join('\n') }}</pre>
+                    </div>
+                    
+                    <div v-if="validationResult.sid_stats && Object.keys(validationResult.sid_stats).length > 0" style="margin-top: 15px;">
+                        <strong>SID统计:</strong>
+                        <pre>{{ formatSidStats(validationResult.sid_stats) }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div v-if="activeTab === 'history'" class="container">
+            <div class="panel full-width">
+                <h2 class="panel-title">📋 规则历史记录</h2>
+                
+                <div v-if="messages.history" :class="'alert alert-' + messages.history.type">
+                    {{ messages.history.text }}
+                </div>
+
+                <div v-if="loading.history" style="text-align: center; padding: 40px;">
+                    <span class="loading" style="width: 40px; height: 40px;"></span>
+                </div>
+
+                <div v-else class="history-list">
+                    <div v-for="rule in rules" :key="rule.id" class="history-item" @click="loadRule(rule)">
+                        <div class="time">{{ formatDate(rule.created_at) }}</div>
+                        <div class="vuln-name">{{ rule.vuln_name }}</div>
+                        <div style="font-size: 0.9rem; color: #666;">
+                            类型: {{ rule.vuln_type || '未指定' }} | 状态: {{ rule.status }}
+                        </div>
+                        <pre style="margin-top: 8px; font-size: 0.85rem; color: #333;">{{ rule.current_rule }}</pre>
+                    </div>
+
+                    <div v-if="rules.length === 0" style="text-align: center; padding: 40px; color: #999;">
+                        暂无历史记录
+                    </div>
+                </div>
+
+                <div v-if="totalRules > rules.length" style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-primary" @click="loadMoreRules">加载更多</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    activeTab: 'generate',
+                    apiBaseUrl: 'http://localhost:5000/api',
+                    
+                    vulnInfo: {
+                        name: '',
+                        type: '',
+                        description: '',
+                        poc: ''
+                    },
+                    
+                    currentRule: '',
+                    currentRuleId: null,
+                    pcapPath: '/home/kali/pcap_check',
+                    
+                    validationResult: null,
+                    
+                    loading: {
+                        generate: false,
+                        validate: false,
+                        optimize: false,
+                        history: false
+                    },
+                    
+                    messages: {
+                        generate: null,
+                        history: null
+                    },
+                    
+                    rules: [],
+                    totalRules: 0,
+                    currentPage: 1
+                };
+            },
+            
+            methods: {
+                async generateRule() {
+                    if (!this.vulnInfo.name || !this.vulnInfo.description) {
+                        this.showMessage('generate', 'error', '请填写漏洞名称和描述');
+                        return;
+                    }
+                    
+                    this.loading.generate = true;
+                    this.messages.generate = null;
+                    
+                    try {
+                        const response = await axios.post(`${this.apiBaseUrl}/rules/generate`, {
+                            vuln_name: this.vulnInfo.name,
+                            vuln_type: this.vulnInfo.type,
+                            vuln_description: this.vulnInfo.description,
+                            poc: this.vulnInfo.poc
+                        });
+                        
+                        if (response.data.success) {
+                            this.currentRule = response.data.generated_rule;
+                            this.currentRuleId = response.data.rule_id;
+                            this.showMessage('generate', 'success', '规则生成成功！');
+                        } else {
+                            this.showMessage('generate', 'error', '生成失败: ' + response.data.error);
+                        }
+                    } catch (error) {
+                        this.showMessage('generate', 'error', '请求失败: ' + error.message);
+                    } finally {
+                        this.loading.generate = false;
+                    }
+                },
+                
+                async validateRule() {
+                    if (!this.currentRule) {
+                        this.showMessage('generate', 'error', '请先生成或输入规则');
+                        return;
+                    }
+                    
+                    this.loading.validate = true;
+                    this.validationResult = null;
+                    
+                    try {
+                        const response = await axios.post(`${this.apiBaseUrl}/rules/validate`, {
+                            rule_content: this.currentRule,
+                            rule_id: this.currentRuleId,
+                            pcap_path: this.pcapPath
+                        });
+                        
+                        if (response.data.success) {
+                            this.validationResult = response.data.validation_result;
+                            this.showMessage('generate', 'success', '验证完成！');
+                        } else {
+                            this.showMessage('generate', 'error', '验证失败: ' + response.data.error);
+                        }
+                    } catch (error) {
+                        this.showMessage('generate', 'error', '请求失败: ' + error.message);
+                    } finally {
+                        this.loading.validate = false;
+                    }
+                },
+                
+                async optimizeRule() {
+                    if (!this.currentRule) {
+                        this.showMessage('generate', 'error', '请先生成或输入规则');
+                        return;
+                    }
+                    
+                    const feedback = prompt('请输入优化建议（可选）:');
+                    
+                    this.loading.optimize = true;
+                    
+                    try {
+                        const response = await axios.post(`${this.apiBaseUrl}/rules/optimize`, {
+                            rule_id: this.currentRuleId,
+                            current_rule: this.currentRule,
+                            feedback: feedback || '',
+                            validation_result: this.validationResult ? JSON.stringify(this.validationResult) : ''
+                        });
+                        
+                        if (response.data.success) {
+                            this.currentRule = response.data.optimized_rule;
+                            this.showMessage('generate', 'success', '规则优化成功！');
+                        } else {
+                            this.showMessage('generate', 'error', '优化失败: ' + response.data.error);
+                        }
+                    } catch (error) {
+                        this.showMessage('generate', 'error', '请求失败: ' + error.message);
+                    } finally {
+                        this.loading.optimize = false;
+                    }
+                },
+                
+                async loadRules() {
+                    this.loading.history = true;
+                    this.messages.history = null;
+                    
+                    try {
+                        const response = await axios.get(`${this.apiBaseUrl}/rules`, {
+                            params: {
+                                page: this.currentPage,
+                                per_page: 20
+                            }
+                        });
+                        
+                        if (response.data.success) {
+                            this.rules = response.data.rules;
+                            this.totalRules = response.data.total;
+                        } else {
+                            this.showMessage('history', 'error', '加载失败: ' + response.data.error);
+                        }
+                    } catch (error) {
+                        this.showMessage('history', 'error', '请求失败: ' + error.message);
+                    } finally {
+                        this.loading.history = false;
+                    }
+                },
+                
+                async loadMoreRules() {
+                    this.currentPage++;
+                    await this.loadRules();
+                },
+                
+                loadRule(rule) {
+                    this.activeTab = 'generate';
+                    this.currentRule = rule.current_rule;
+                    this.currentRuleId = rule.id;
+                    this.vulnInfo.name = rule.vuln_name;
+                    this.vulnInfo.type = rule.vuln_type || '';
+                    this.vulnInfo.description = rule.description || '';
+                },
+                
+                showMessage(type, level, text) {
+                    this.messages[type] = { type: level, text };
+                    setTimeout(() => {
+                        this.messages[type] = null;
+                    }, 5000);
+                },
+                
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    const date = new Date(dateStr);
+                    return date.toLocaleString('zh-CN');
+                },
+                
+                formatSidStats(stats) {
+                    return Object.entries(stats)
+                        .map(([sid, count]) => `${count}x ${sid}`)
+                        .join('\n');
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
