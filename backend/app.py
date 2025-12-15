@@ -7,20 +7,28 @@ from flask_cors import CORS
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 from database import Database
 from ai_client import AIChatClient
 from suricata_validator import SuricataValidator
 
+# Load environment variables from .env file
+load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
-API_KEY = "fk168504229.k2h9hyebSX7c_UzjTA5U5T0t_3IzR10124707b23"
-DB_PATH = os.path.join(os.path.dirname(__file__), 'suricata_rules.db')
+# Configuration - Load from environment variables
+API_KEY = os.getenv('AI_API_KEY')
+if not API_KEY:
+    raise ValueError("AI_API_KEY not found in environment variables. Please create a .env file with AI_API_KEY=your_key")
+
+AI_MODEL = os.getenv('AI_MODEL', '360gpt-pro')
+DB_PATH = os.getenv('DB_PATH', os.path.join(os.path.dirname(__file__), 'suricata_rules.db'))
 
 # Initialize components
 db = Database(DB_PATH)
-ai_client = AIChatClient(API_KEY, model="360gpt-pro")
+ai_client = AIChatClient(API_KEY, model=AI_MODEL)
 suricata_validator = SuricataValidator()
 
 

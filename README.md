@@ -40,7 +40,34 @@ suricata_ai_gen/
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 配置环境变量
+
+**重要：为了安全，请先配置API密钥**
+
+复制环境变量示例文件：
+```bash
+# Windows
+copy .env.example .env
+
+# Linux
+cp .env.example .env
+```
+
+编辑 `.env` 文件，设置您的AI API密钥：
+```bash
+# 360 AI API Configuration
+AI_API_KEY=your_api_key_here  # 请替换为您的真实API密钥
+AI_MODEL=360gpt-pro
+
+# 其他配置...
+```
+
+**⚠️ 安全提示**：
+- `.env` 文件已加入 `.gitignore`，不会被提交到Git仓库
+- 请勿在代码中硬编码API密钥
+- 不要将 `.env` 文件分享给他人
+
+### 2. 安装依赖
 
 首先确保已经创建Python虚拟环境：
 ```bash
@@ -56,12 +83,12 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-安装后端依赖：
+安装后端依赖（包含python-dotenv）：
 ```bash
 pip install -r backend\requirements.txt
 ```
 
-### 2. 启动后端服务
+### 3. 启动后端服务
 
 **Windows:**
 ```bash
@@ -82,7 +109,7 @@ python app.py
 
 后端将运行在 `http://localhost:5000`
 
-### 3. 启动前端界面
+### 4. 启动前端界面
 
 **Windows:**
 ```bash
@@ -103,7 +130,7 @@ python -m http.server 8080
 
 前端将运行在 `http://localhost:8080`
 
-### 4. 一键启动所有服务（推荐）
+### 5. 一键启动所有服务（推荐）
 
 **Windows:**
 ```bash
@@ -124,7 +151,7 @@ chmod +x stop_all.sh
 - Windows会开启两个命令窗口分别运行前后端
 - Linux优先使用tmux管理多窗口，如没有则使用screen或后台进程
 
-### 5. 访问应用
+### 6. 访问应用
 
 打开浏览器访问: `http://localhost:8080`
 
@@ -154,7 +181,7 @@ chmod +x stop_all.sh
 
 ### 规则编写规范
 
-本工具遵循360NDR漏洞类Suricata规则编写规范，包括：
+本工具遵循Suricata规则编写规范，包括：
 
 #### HTTP类特征选取
 - 省略http.method（除非必要）
