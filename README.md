@@ -68,6 +68,12 @@ pip install -r backend\requirements.txt
 start_backend.bat
 ```
 
+**Linux/Kali:**
+```bash
+chmod +x start_backend.sh
+./start_backend.sh
+```
+
 **手动启动:**
 ```bash
 cd backend
@@ -83,6 +89,12 @@ python app.py
 start_frontend.bat
 ```
 
+**Linux/Kali:**
+```bash
+chmod +x start_frontend.sh
+./start_frontend.sh
+```
+
 **手动启动:**
 ```bash
 cd frontend
@@ -91,7 +103,28 @@ python -m http.server 8080
 
 前端将运行在 `http://localhost:8080`
 
-### 4. 访问应用
+### 4. 一键启动所有服务（推荐）
+
+**Windows:**
+```bash
+start_all.bat
+```
+
+**Linux/Kali:**
+```bash
+chmod +x start_all.sh
+./start_all.sh
+
+# 停止所有服务
+chmod +x stop_all.sh
+./stop_all.sh
+```
+
+**说明**：
+- Windows会开启两个命令窗口分别运行前后端
+- Linux优先使用tmux管理多窗口，如没有则使用screen或后台进程
+
+### 5. 访问应用
 
 打开浏览器访问: `http://localhost:8080`
 
