@@ -22,9 +22,11 @@ echo "Frontend server starting..."
 echo ""
 echo "========================================"
 echo "  Frontend URL: http://localhost:8080"
+echo "  Remote access: http://<your-ip>:8080"
 echo "========================================"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-python3 -m http.server 8080
+# Bind to 0.0.0.0 to allow remote access
+python3 -m http.server 8080 --bind 0.0.0.0
