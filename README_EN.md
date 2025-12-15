@@ -266,7 +266,7 @@ This project is licensed under the MIT License - for learning and research purpo
 For questions or suggestions:
 
 [![GitHub Issues](https://img.shields.io/badge/GitHub-Issues-red?style=for-the-badge&logo=github)](https://github.com/yourusername/suricata_ai_gen/issues)
-[![Email](https://img.shields.io/badge/Email-Contact-blue?style=for-the-badge&logo=gmail)](mailto:your.email@example.com)
+[![Email](https://img.shields.io/badge/Email-Contact-blue?style=for-the-badge&logo=gmail)](mailto:rockysocket@gmail.com)
 
 </div>
 
@@ -278,9 +278,9 @@ For questions or suggestions:
 
 If this project helps you, please give it a Star ⭐!
 
-[![Star](https://img.shields.io/github/stars/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/stargazers)
-[![Fork](https://img.shields.io/github/forks/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/network/members)
-[![Watch](https://img.shields.io/github/watchers/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/watchers)
+[![Star](https://img.shields.io/github/stars/yourusername/suricata_ai_gen?style=social)](https://github.com/rockmelodies/suricata_ai_gen/stargazers)
+[![Fork](https://img.shields.io/github/forks/yourusername/suricata_ai_gen?style=social)](https://github.com/rockmelodies/suricata_ai_gen/network/members)
+[![Watch](https://img.shields.io/github/watchers/yourusername/suricata_ai_gen?style=social)](https://github.com/rockmelodies/suricata_ai_gen/watchers)
 
 **Made with ❤️ by Security Researchers**
 
