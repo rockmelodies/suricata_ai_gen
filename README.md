@@ -1,6 +1,38 @@
-# Suricata规则生成与验证工具
+<div align="center">
 
-基于AI的智能Suricata规则生成、优化与自动化验证平台
+# 🛡️ Suricata规则生成与验证工具
+
+### 基于AI的智能Suricata规则生成、优化与自动化验证平台
+
+<p align="center">
+  <a href="#"><img src="https://img.shields.io/badge/Python-3.8+-blue.svg" alt="Python Version"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Flask-3.0.0-green.svg" alt="Flask"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Vue-3.0-brightgreen.svg" alt="Vue3"></a>
+  <a href="#"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey.svg" alt="Platform"></a>
+  <a href="https://github.com/yourusername/suricata_ai_gen/stargazers"><img src="https://img.shields.io/github/stars/yourusername/suricata_ai_gen?style=social" alt="GitHub stars"></a>
+</p>
+
+<p align="center">
+  <a href="#功能特性">功能特性</a> •
+  <a href="#快速开始">快速开始</a> •
+  <a href="#使用指南">使用指南</a> •
+  <a href="#api接口文档">API文档</a> •
+  <a href="#贡献指南">贡献</a>
+</p>
+
+<p align="center">
+  <a href="README.md">简体中文</a> |
+  <a href="README_EN.md">English</a>
+</p>
+
+---
+
+<img src="https://img.shields.io/badge/Status-Active-success" alt="Status">
+<img src="https://img.shields.io/badge/Maintained-Yes-brightgreen" alt="Maintained">
+<img src="https://img.shields.io/badge/AI%20Powered-360GPT-ff69b4" alt="AI Powered">
+
+</div>
 
 ## 功能特性
 
@@ -399,14 +431,100 @@ set SSH_KEY=C:\path\to\private_key
 - [ ] Web界面优化
 - [ ] Docker容器化部署
 
-## 贡献指南
+## 🌟 项目统计
+
+<div align="center">
+
+| 类型 | 数量 | 说明 |
+|------|------|------|
+| 💻 **后端代码** | 6个文件 | ~1000行Python |
+| 🎨 **前端代码** | 1个文件 | 646行Vue3 |
+| 📚 **文档** | 8个文件 | ~3500行 |
+| ⚙️ **脚本** | 7个 | Windows + Linux |
+| 🔌 **API接口** | 8个 | RESTful API |
+
+</div>
+
+## 🎆 技术栈
+
+<div align="center">
+
+### 后端
+
+![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0.0-000000?style=for-the-badge&logo=flask&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+
+### 前端
+
+![Vue.js](https://img.shields.io/badge/Vue.js-3.0-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+
+### 工具 & 平台
+
+![Suricata](https://img.shields.io/badge/Suricata-6.0+-FF6600?style=for-the-badge&logo=suricata&logoColor=white)
+![Kali Linux](https://img.shields.io/badge/Kali_Linux-557C94?style=for-the-badge&logo=kali-linux&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
+
+</div>
+
+## ⭐ Star History
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/suricata_ai_gen&type=Date)](https://star-history.com/#yourusername/suricata_ai_gen&Date)
+
+</div>
+
+## 🤝 贡献指南
 
 欢迎提交Issue和Pull Request！
 
-## 许可证
+<div align="center">
 
-本项目仅供学习和研究使用。
+### 贡献者
 
-## 联系方式
+<a href="https://github.com/yourusername/suricata_ai_gen/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=yourusername/suricata_ai_gen" />
+</a>
 
-如有问题或建议，请通过Issue反馈。
+</div>
+
+## 📝 许可证
+
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+
+本项目采用 MIT 许可证，仅供学习和研究使用。
+
+</div>
+
+## 📧 联系方式
+
+<div align="center">
+
+如有问题或建议，请通过以下方式反馈：
+
+[![GitHub Issues](https://img.shields.io/badge/GitHub-Issues-red?style=for-the-badge&logo=github)](https://github.com/yourusername/suricata_ai_gen/issues)
+[![Email](https://img.shields.io/badge/Email-Contact-blue?style=for-the-badge&logo=gmail)](mailto:your.email@example.com)
+
+</div>
+
+---
+
+<div align="center">
+
+### ❤️ 感谢使用
+
+如果这个项目对您有帮助，请给个 Star ⭐ 支持一下！
+
+[![Star](https://img.shields.io/github/stars/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/stargazers)
+[![Fork](https://img.shields.io/github/forks/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/network/members)
+[![Watch](https://img.shields.io/github/watchers/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/watchers)
+
+**Made with ❤️ by Security Researchers**
+
+</div>
