@@ -72,6 +72,293 @@ suricata_ai_gen/
 - Suricata 6.0+
 - PCAP测试文件
 
+## 📦 部署说明
+
+### Python虚拟环境配置
+
+**⚠️ 重要：首次使用前必须创建虚拟环境！**
+
+虚拟环境可以隔离项目依赖，避免与系统Python包冲突。
+
+#### Windows环境
+
+```bash
+# 1. 检查Python版本（需要3.8+）
+python --version
+
+# 2. 进入项目目录
+cd F:\data\suricata_ai_gen
+
+# 3. 创建虚拟环境
+python -m venv .venv
+
+# 4. 激活虚拟环境
+.venv\Scripts\activate
+
+# 激活成功后，命令行前面会显示 (.venv)
+
+# 5. 升级pip（推荐）
+python -m pip install --upgrade pip
+
+# 6. 安装项目依赖
+pip install -r backend\requirements.txt
+
+# 7. 验证安装
+pip list
+```
+
+#### Linux/Kali环境
+
+```bash
+# 1. 检查Python版本
+python3 --version
+
+# 2. 安装venv（如果没有）
+sudo apt update
+sudo apt install python3-venv python3-pip -y
+
+# 3. 进入项目目录
+cd /path/to/suricata_ai_gen
+
+# 4. 创建虚拟环境
+python3 -m venv .venv
+
+# 5. 激活虚拟环境
+source .venv/bin/activate
+
+# 激活成功后，命令行前面会显示 (.venv)
+
+# 6. 升级pip
+pip install --upgrade pip
+
+# 7. 安装项目依赖
+pip install -r backend/requirements.txt
+
+# 8. 验证安装
+pip list
+```
+
+#### 虚拟环境常用操作
+
+```bash
+# 激活虚拟环境
+# Windows
+.venv\Scripts\activate
+# Linux
+source .venv/bin/activate
+
+# 退出虚拟环境
+deactivate
+
+# 删除虚拟环境（如需重新创建）
+# Windows
+rmdir /s .venv
+# Linux
+rm -rf .venv
+
+# 查看已安装的包
+pip list
+
+# 导出依赖列表
+pip freeze > requirements.txt
+```
+
+### 常见问题排查
+
+#### 问题1：虚拟环境创建失败
+
+**现象**：
+```
+Error: [WinError 5] 拒绝访问
+```
+
+**解决方法**：
+```bash
+# Windows: 以管理员身份运行PowerShell/CMD
+# 或者检查Python安装路径权限
+```
+
+#### 问题2：无法激活虚拟环境（Windows PowerShell）
+
+**现象**：
+```
+无法加载文件 .venv\Scripts\Activate.ps1，因为在此系统上禁止运行脚本
+```
+
+**解决方法**：
+```powershell
+# 方法1: 临时允许执行脚本
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+
+# 方法2: 使用CMD而不是PowerShell
+cmd
+.venv\Scripts\activate.bat
+
+# 方法3: 使用Git Bash
+source .venv/Scripts/activate
+```
+
+#### 问题3：pip安装依赖失败
+
+**现象**：
+```
+ERROR: Could not find a version that satisfies the requirement...
+```
+
+**解决方法**：
+```bash
+# 1. 检查Python版本是否>=3.8
+python --version
+
+# 2. 升级pip
+python -m pip install --upgrade pip
+
+# 3. 使用国内镜像源加速
+pip install -r backend\requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 或配置永久镜像源
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+#### 问题4：依赖包版本冲突
+
+**解决方法**：
+```bash
+# 1. 删除现有虚拟环境
+rm -rf .venv  # Linux
+rmdir /s .venv  # Windows
+
+# 2. 重新创建虚拟环境
+python -m venv .venv
+
+# 3. 激活并安装
+source .venv/bin/activate  # Linux
+.venv\Scripts\activate  # Windows
+pip install -r backend/requirements.txt
+```
+
+### 自动化部署脚本
+
+#### Windows一键部署脚本
+
+创建 `setup.bat` 文件：
+```batch
+@echo off
+echo ========================================
+echo   Suricata规则生成工具 - 自动部署
+echo ========================================
+echo.
+
+:: 检查Python
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [错误] Python未安装或未添加到PATH
+    echo 请先安装Python 3.8+
+    pause
+    exit /b 1
+)
+
+echo [1/5] 检测Python版本...
+python --version
+
+echo.
+echo [2/5] 创建虚拟环境...
+if exist .venv (
+    echo 虚拟环境已存在，跳过创建
+) else (
+    python -m venv .venv
+    echo 虚拟环境创建成功
+)
+
+echo.
+echo [3/5] 激活虚拟环境...
+call .venv\Scripts\activate.bat
+
+echo.
+echo [4/5] 升级pip...
+python -m pip install --upgrade pip
+
+echo.
+echo [5/5] 安装依赖包...
+pip install -r backend\requirements.txt
+
+echo.
+echo ========================================
+echo   部署完成！
+echo ========================================
+echo.
+echo 下一步操作：
+echo 1. 复制 .env.example 为 .env
+echo 2. 编辑 .env 文件，配置API密钥
+echo 3. 运行 start_all.bat 启动服务
+echo.
+pause
+```
+
+#### Linux一键部署脚本
+
+创建 `setup.sh` 文件：
+```bash
+#!/bin/bash
+
+echo "========================================"
+echo "  Suricata规则生成工具 - 自动部署"
+echo "========================================"
+echo ""
+
+# 检查Python
+if ! command -v python3 &> /dev/null; then
+    echo "[错误] Python3未安装"
+    echo "请执行: sudo apt install python3 python3-venv python3-pip"
+    exit 1
+fi
+
+echo "[1/5] 检测Python版本..."
+python3 --version
+
+echo ""
+echo "[2/5] 创建虚拟环境..."
+if [ -d ".venv" ]; then
+    echo "虚拟环境已存在，跳过创建"
+else
+    python3 -m venv .venv
+    echo "虚拟环境创建成功"
+fi
+
+echo ""
+echo "[3/5] 激活虚拟环境..."
+source .venv/bin/activate
+
+echo ""
+echo "[4/5] 升级pip..."
+pip install --upgrade pip
+
+echo ""
+echo "[5/5] 安装依赖包..."
+pip install -r backend/requirements.txt
+
+echo ""
+echo "========================================"
+echo "  部署完成！"
+echo "========================================"
+echo ""
+echo "下一步操作："
+echo "1. cp .env.example .env"
+echo "2. 编辑 .env 文件，配置API密钥"
+echo "3. 运行 ./start_all.sh 启动服务"
+echo ""
+```
+
+使用方法：
+```bash
+# Windows
+setup.bat
+
+# Linux
+chmod +x setup.sh
+./setup.sh
+```
+
 ## 快速开始
 
 ### 1. 配置环境变量
