@@ -231,7 +231,7 @@ Content-Type: application/json
 
 <div align="center">
 
-[![Star History Chart](https://api.star-history.com/svg?repos=rockmelodies/suricata_ai_gen&type=Date)](https://star-history.com/#rockmelodies/suricata_ai_gen&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=rockmelodies/suricata_ai_gen&type=Date)](https://star-history.com/rockmelodies/suricata_ai_gen&Date)
 
 </div>
 
