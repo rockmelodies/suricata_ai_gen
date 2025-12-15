@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suricata规则生成与验证工具</title>
+    
+    <!-- 
+        API配置：如果需要手动指定API地址，可以取消下面的注释
+        默认会自动使用当前页面的host:5000作为API地址
+    -->
+    <!-- <script>
+        window.API_BASE_URL = 'http://your-server-ip:5000/api';
+    </script> -->
+    
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <style>
@@ -452,11 +461,35 @@
     <script>
         const { createApp } = Vue;
 
+        // 全局函数：获取API基础URL，自动适配本地和远程访问
+        function getApiBaseUrl() {
+            // 优先使用手动配置的环境变量
+            if (window.API_BASE_URL) {
+                console.log('[API配置] 使用手动配置:', window.API_BASE_URL);
+                return window.API_BASE_URL;
+            }
+            
+            // 自动检测：使用当前页面的host，端口改为5000
+            const protocol = window.location.protocol; // http: 或 https:
+            const hostname = window.location.hostname; // 如: localhost, 192.168.1.100, example.com
+            const apiPort = '5000';
+            const apiUrl = `${protocol}//${hostname}:${apiPort}/api`;
+            
+            console.log('[API配置] 自动检测:', {
+                'protocol': protocol,
+                'hostname': hostname,
+                'apiUrl': apiUrl
+            });
+            
+            return apiUrl;
+        }
+
         createApp({
             data() {
                 return {
                     activeTab: 'generate',
-                    apiBaseUrl: 'http://localhost:5000/api',
+                    // 动态获取API地址，支持本地和远程访问
+                    apiBaseUrl: getApiBaseUrl(),
                     
                     vulnInfo: {
                         name: '',
