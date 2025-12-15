@@ -10,7 +10,7 @@
   <a href="#"><img src="https://img.shields.io/badge/Vue-3.0-brightgreen.svg" alt="Vue3"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey.svg" alt="Platform"></a>
-  <a href="https://github.com/yourusername/suricata_ai_gen/stargazers"><img src="https://img.shields.io/github/stars/yourusername/suricata_ai_gen?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/rockmelodies/suricata_ai_gen/stargazers"><img src="https://img.shields.io/github/stars/rockmelodies/suricata_ai_gen?style=social" alt="GitHub stars"></a>
 </p>
 
 <p align="center">
@@ -763,7 +763,7 @@ set SSH_KEY=C:\path\to\private_key
 
 <div align="center">
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/suricata_ai_gen&type=Date)](https://star-history.com/#yourusername/suricata_ai_gen&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=rockmelodies/suricata_ai_gen&type=Date)](https://star-history.com/#rockmelodies/suricata_ai_gen&Date)
 
 </div>
 
@@ -775,8 +775,8 @@ set SSH_KEY=C:\path\to\private_key
 
 ### 贡献者
 
-<a href="https://github.com/yourusername/suricata_ai_gen/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=yourusername/suricata_ai_gen" />
+<a href="https://github.com/rockmelodies/suricata_ai_gen/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=rockmelodies/suricata_ai_gen" />
 </a>
 
 </div>
@@ -797,8 +797,8 @@ set SSH_KEY=C:\path\to\private_key
 
 如有问题或建议，请通过以下方式反馈：
 
-[![GitHub Issues](https://img.shields.io/badge/GitHub-Issues-red?style=for-the-badge&logo=github)](https://github.com/yourusername/suricata_ai_gen/issues)
-[![Email](https://img.shields.io/badge/Email-Contact-blue?style=for-the-badge&logo=gmail)](mailto:your.email@example.com)
+[![GitHub Issues](https://img.shields.io/badge/GitHub-Issues-red?style=for-the-badge&logo=github)](https://github.com/rockmelodies/suricata_ai_gen/issues)
+[![Email](https://img.shields.io/badge/Email-Contact-blue?style=for-the-badge&logo=gmail)](mailto:rockysocket@gmail.com)
 
 </div>
 
@@ -810,9 +810,9 @@ set SSH_KEY=C:\path\to\private_key
 
 如果这个项目对您有帮助，请给个 Star ⭐ 支持一下！
 
-[![Star](https://img.shields.io/github/stars/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/stargazers)
-[![Fork](https://img.shields.io/github/forks/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/network/members)
-[![Watch](https://img.shields.io/github/watchers/yourusername/suricata_ai_gen?style=social)](https://github.com/yourusername/suricata_ai_gen/watchers)
+[![Star](https://img.shields.io/github/stars/rockmelodies/suricata_ai_gen?style=social)](https://github.com/rockmelodies/suricata_ai_gen/stargazers)
+[![Fork](https://img.shields.io/github/forks/rockmelodies/suricata_ai_gen?style=social)](https://github.com/rockmelodies/suricata_ai_gen/network/members)
+[![Watch](https://img.shields.io/github/watchers/rockmelodies/suricata_ai_gen?style=social)](https://github.com/rockmelodies/suricata_ai_gen/watchers)
 
 **Made with ❤️ by Security Researchers**
 
