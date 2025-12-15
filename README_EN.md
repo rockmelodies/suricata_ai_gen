@@ -243,8 +243,8 @@ Issues and Pull Requests are welcome!
 
 ### Contributors
 
-<a href="https://github.com/yourusername/suricata_ai_gen/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=yourusername/suricata_ai_gen" />
+<a href="https://github.com/rockmelodies/suricata_ai_gen/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=rockmelodies/suricata_ai_gen" />
 </a>
 
 </div>
