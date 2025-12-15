@@ -6,12 +6,30 @@
     <title>Suricata规则生成与验证工具</title>
     
     <!-- 
-        API配置：如果需要手动指定API地址，可以取消下面的注释
-        默认会自动使用当前页面的host:5000作为API地址
+        API配置：
+        
+        方式1：使用Nginx反向代理（推荐）
+          - 前后端统一使用80端口
+          - 前端访问: http://服务器IP/
+          - API自动代理: http://服务器IP/api
+          - 取消下面USE_NGINX_PROXY的注释
+        
+        方式2：直接访问（开发环境）
+          - 前端: http://服务器IP:8080
+          - 后端: http://服务器IP:5000
+          - 会自动检测host并拼接端口
+          - 保持USE_NGINX_PROXY注释状态
+        
+        方式3：手动指定API地址
+          - 取消API_BASE_URL的注释并设置具体地址
     -->
-    <!-- <script>
-        window.API_BASE_URL = 'http://your-server-ip:5000/api';
-    </script> -->
+    <script>
+        // 使用Nginx反向代理时，取消下面的注释
+        // window.USE_NGINX_PROXY = true;
+        
+        // 或手动指定API地址（优先级最高）
+        // window.API_BASE_URL = 'http://your-server-ip:5000/api';
+    </script>
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
@@ -461,23 +479,43 @@
     <script>
         const { createApp } = Vue;
 
-        // 全局函数：获取API基础URL，自动适配本地和远程访问
+        // 全局函数：获取API基础URL，支持多种部署方式
         function getApiBaseUrl() {
-            // 优先使用手动配置的环境变量
+            // 方式1：手动指定API地址（优先级最高）
             if (window.API_BASE_URL) {
                 console.log('[API配置] 使用手动配置:', window.API_BASE_URL);
                 return window.API_BASE_URL;
             }
             
-            // 自动检测：使用当前页面的host，端口改为5000
+            // 方式2：Nginx反向代理模式（推荐生产环境）
+            if (window.USE_NGINX_PROXY) {
+                // 使用相对路径，Nginx会代理到后端
+                const apiUrl = '/api';
+                console.log('[API配置] Nginx反向代理模式:', apiUrl);
+                return apiUrl;
+            }
+            
+            // 方式3：自动检测模式（开发环境）
+            // 使用当前页面的host，端口改为5000
             const protocol = window.location.protocol; // http: 或 https:
             const hostname = window.location.hostname; // 如: localhost, 192.168.1.100, example.com
+            const port = window.location.port; // 当前页面端口
+            
+            // 如果是80或443端口（可能是Nginx代理），尝试使用相对路径
+            if (port === '' || port === '80' || port === '443') {
+                const apiUrl = '/api';
+                console.log('[API配置] 检测到标准HTTP/HTTPS端口，使用相对路径:', apiUrl);
+                return apiUrl;
+            }
+            
+            // 否则使用完整URL（开发环境）
             const apiPort = '5000';
             const apiUrl = `${protocol}//${hostname}:${apiPort}/api`;
             
-            console.log('[API配置] 自动检测:', {
+            console.log('[API配置] 自动检测模式:', {
                 'protocol': protocol,
                 'hostname': hostname,
+                'currentPort': port,
                 'apiUrl': apiUrl
             });
             
