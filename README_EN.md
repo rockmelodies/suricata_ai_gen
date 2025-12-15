@@ -42,6 +42,8 @@
 📊 **Data Management** - SQLite database for rule history and results  
 🎨 **Friendly UI** - Vue3 frontend with clean and elegant interface  
 
+![img_1.png](img_1.png)
+
 ## Architecture
 
 ```
