@@ -234,7 +234,7 @@ def get_validation_history(rule_id):
 
 def build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc):
     """Build AI prompt for rule generation"""
-    prompt = f"""你是一个Suricata规则编写专家。请根据以下漏洞信息生成一条符合360NDR漏洞类Suricata规则编写规范的规则。
+    prompt = f"""你是一个Suricata规则编写专家。请根据以下漏洞信息生成一条Suricata规则。
 
 漏洞名称: {vuln_name}
 漏洞类型: {vuln_type}
@@ -246,22 +246,51 @@ def build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc):
     
     prompt += """
 请严格遵循以下规范:
-1. HTTP类特征选取:
+
+1. 基本规则格式:
+   - 必须包含: msg, flow, sid, rev
+   - 不要包含: reference, classtype, affected_version, detection_accuracy, affected_product, metadata
+   - msg字段只包含漏洞名称，不要添加任何前缀
+   - sid值使用9000000-9999999范围内的随机数
+   - rev固定为1
+
+2. HTTP类特征选取:
    - 省略http.method，除非明确只能使用某一固定方法
    - URL路径尽量少取1-2级目录，避免固定安装路径
    - 去除路径最后的问号?，在问号前增加斜杠
    - 请求参数必须包含漏洞利用点，冗余参数可省略
    - 各参数拆分成多个content
 
-2. 正则表达式要求:
+3. 正则表达式要求:
+   - 必须使用pcre
    - 必须限制作用域(U/I/H/P等)
-   - 使用通用正则避免绕过
-   - 正则必须带上漏洞利用点参数
+   - 严格按照下面的模板使用，只修改参数名，匹配注入的正则不要修改
 
-3. 规则格式:
-   - alert http any any -> any any (msg:"xxx"; ...)
-   - 必须包含: msg, flow, classtype, sid
-   - 建议包含: reference, rev, metadata
+4. 不同漏洞类型的模板（严格遵循）:
+
+【SQL注入】
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri.raw; content:"请求uri的内容"; nocase; content:"可以执行sql注入命令的参数="; nocase; pcre:"/可以执行sql注入命令的参数=[^\r\n\x26]{0,10}(select|union|sleep|load(\x5f|%5f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(\x2d|%2d){2}|\x27|%27|\x23|%23)/Ii"; sid:XXXXXXX; rev:1;)
+
+【命令注入】
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; http.request_body; content:"可以执行命令的参数key="; nocase; pcre:"/可以执行命令的参数=[^\r\n\x26]{0,10}(\x60|\x2560|\x27|\x2527|\x3b|\x253b|\x7c|\x257c)/Pi"; sid:XXXXXXX; rev:1;)
+
+【文件读取/目录遍历/路径遍历】
+alert http any any -> any any (msg:"漏洞标题"; flow:to_server,established; http.uri.raw; content:"请求uri的内容"; nocase; content:"存在文件读取或目录遍历或路径遍历的参数="; nocase; pcre:"/存在文件读取或目录遍历或路径遍历的参数=[^\r\n\x26]{0,10}((\x2e|\x252e){1,2}|[A-Z](\x3a|%3a))(\x2f|\x252f|\x5c|\x255c)/Ii"; sid:XXXXXXX; rev:1;)
+
+【服务端请求伪造(SSRF)】
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.method; content:"GET"; http.uri; content:"请求uri的内容"; nocase; content:"存在服务端请求伪造(SSRF)的参数="; nocase; pcre:"/存在服务端请求伪造(SSRF)的参数=(https?|files?|.?ftp|dict)(\x3a|%3a)(\x2f|%2f)/Ui"; sid:XXXXXXX; rev:1;)
+
+【文件上传攻击】
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; http.request_body; content:"name=|22|上传XX功能柜使用的特地字段名|22|"; nocase; content:"filename="; nocase; content:"编程语言起始标签"; distance:0; sid:XXXXXXX; rev:1;)
+
+【未授权访问/权限绕过】
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; content:"参考这个op=GetUsersInfo套用吧"; nocase; http.header.raw; content:!"|0a|参考这个Authorization套用吧"; nocase; content:!"|0a|参考这个Cookie套用吧"; nocase; sid:XXXXXXX; rev:1;)
+
+5. 重要注意事项:
+   - pcre正则表达式中的匹配部分（select|union|sleep等）不要修改，只替换参数名
+   - 严格按照模板格式，不要添加reference, classtype, affected_version等字段
+   - sid必须是7位数字，范围在9000000-9999999
+   - 根据漏洞类型选择对应的模板，严格遵循模板结构
 
 请直接输出Suricata规则，不要包含其他解释文字。
 """
@@ -285,10 +314,13 @@ def build_rule_optimization_prompt(current_rule, feedback, validation_result):
     
     prompt += """
 优化要求:
-1. 确保规则符合360NDR规范
+1. 确保规则格式符合规范
 2. 提高检测准确率，减少误报
-3. 优化正则表达式，避免绕过
+3. 优化正则表达式，避免绕过，但不要修改pcre中的匹配模式（select|union等）
 4. 保持规则的可读性和可维护性
+5. 只保留: msg, flow, http.相关字段, content, pcre, sid, rev
+6. 移除: reference, classtype, affected_version, detection_accuracy, affected_product, metadata
+7. msg字段只保留漏洞名称，移除任何前缀
 
 请直接输出优化后的Suricata规则，不要包含其他解释文字。
 """
