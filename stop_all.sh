@@ -32,27 +32,55 @@ if command -v screen &> /dev/null; then
 fi
 
 # Kill processes by port
+# Also check for PID files
+
 echo ""
 echo "Checking for processes on ports 5000 and 8080..."
 
-# Kill process on port 5000 (backend)
-BACKEND_PID=$(lsof -ti:5000 2>/dev/null)
-if [ ! -z "$BACKEND_PID" ]; then
-    echo "Killing backend process (PID: $BACKEND_PID)..."
-    kill -9 $BACKEND_PID 2>/dev/null
-    echo "✓ Backend stopped"
+# Kill process by PID file (backend)
+if [ -f "backend.pid" ]; then
+    BACKEND_PID=$(cat backend.pid)
+    if ps -p $BACKEND_PID > /dev/null 2>&1; then
+        echo "Killing backend process (PID: $BACKEND_PID)..."
+        kill $BACKEND_PID 2>/dev/null
+        echo "✓ Backend stopped"
+    else
+        echo "  Backend PID file exists but process not running"
+    fi
+    rm -f backend.pid
 else
-    echo "  No process found on port 5000"
+    # Fallback to port-based killing
+    BACKEND_PID=$(lsof -ti:5000 2>/dev/null)
+    if [ ! -z "$BACKEND_PID" ]; then
+        echo "Killing backend process (PID: $BACKEND_PID)..."
+        kill -9 $BACKEND_PID 2>/dev/null
+        echo "✓ Backend stopped"
+    else
+        echo "  No process found on port 5000"
+    fi
 fi
 
-# Kill process on port 8080 (frontend)
-FRONTEND_PID=$(lsof -ti:8080 2>/dev/null)
-if [ ! -z "$FRONTEND_PID" ]; then
-    echo "Killing frontend process (PID: $FRONTEND_PID)..."
-    kill -9 $FRONTEND_PID 2>/dev/null
-    echo "✓ Frontend stopped"
+# Kill process by PID file (frontend)
+if [ -f "frontend.pid" ]; then
+    FRONTEND_PID=$(cat frontend.pid)
+    if ps -p $FRONTEND_PID > /dev/null 2>&1; then
+        echo "Killing frontend process (PID: $FRONTEND_PID)..."
+        kill $FRONTEND_PID 2>/dev/null
+        echo "✓ Frontend stopped"
+    else
+        echo "  Frontend PID file exists but process not running"
+    fi
+    rm -f frontend.pid
 else
-    echo "  No process found on port 8080"
+    # Fallback to port-based killing
+    FRONTEND_PID=$(lsof -ti:8080 2>/dev/null)
+    if [ ! -z "$FRONTEND_PID" ]; then
+        echo "Killing frontend process (PID: $FRONTEND_PID)..."
+        kill -9 $FRONTEND_PID 2>/dev/null
+        echo "✓ Frontend stopped"
+    else
+        echo "  No process found on port 8080"
+    fi
 fi
 
 echo ""

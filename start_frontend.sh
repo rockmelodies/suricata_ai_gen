@@ -29,4 +29,11 @@ echo "Press Ctrl+C to stop the server"
 echo ""
 
 # Bind to 0.0.0.0 to allow remote access
-python3 -m http.server 8080 --bind 0.0.0.0
+# Redirect output to log file to reduce console clutter
+python3 -m http.server 8080 --bind 0.0.0.0 > frontend.log 2>&1 &
+FRONTEND_PID=$!
+echo $FRONTEND_PID > frontend.pid
+
+echo "Frontend PID: $FRONTEND_PID"
+echo "Log file: frontend.log"
+echo "To view logs: tail -f frontend.log"

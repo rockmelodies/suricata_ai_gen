@@ -332,5 +332,8 @@ if __name__ == '__main__':
     # Initialize database
     db.init_db()
     
+    # Check if debug mode is enabled via environment variable
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    
     # Run Flask app
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

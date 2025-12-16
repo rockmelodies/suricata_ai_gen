@@ -27,10 +27,12 @@ if command -v tmux &> /dev/null; then
     tmux kill-session -t $SESSION_NAME 2>/dev/null
     
     # Create new session with backend
-    tmux new-session -d -s $SESSION_NAME -n "Backend" "./start_backend.sh"
+    # Redirect output to log file to reduce console clutter
+    tmux new-session -d -s $SESSION_NAME -n "Backend" "./start_backend.sh > /dev/null 2>&1"
     
     # Create new window for frontend
-    tmux new-window -t $SESSION_NAME -n "Frontend" "./start_frontend.sh"
+    # Redirect output to log file to reduce console clutter
+    tmux new-window -t $SESSION_NAME -n "Frontend" "./start_frontend.sh > /dev/null 2>&1"
     
     # Select backend window
     tmux select-window -t $SESSION_NAME:0
@@ -74,13 +76,13 @@ else
         screen -S $SESSION_NAME -X quit 2>/dev/null
         
         # Start backend in screen
-        screen -dmS "${SESSION_NAME}_backend" bash -c "./start_backend.sh"
+        screen -dmS "${SESSION_NAME}_backend" bash -c "./start_backend.sh > /dev/null 2>&1"
         
         # Wait a moment
         sleep 2
         
         # Start frontend in another screen
-        screen -dmS "${SESSION_NAME}_frontend" bash -c "./start_frontend.sh"
+        screen -dmS "${SESSION_NAME}_frontend" bash -c "./start_frontend.sh > /dev/null 2>&1"
         
         echo "============================================"
         echo "   Services are starting in screen..."
@@ -119,14 +121,14 @@ else
         echo ""
         
         # Start backend in background
-        ./start_backend.sh &
+        ./start_backend.sh > /dev/null 2>&1 &
         BACKEND_PID=$!
         
         # Wait for backend to start
         sleep 3
         
         # Start frontend in background
-        ./start_frontend.sh &
+        ./start_frontend.sh > /dev/null 2>&1 &
         FRONTEND_PID=$!
         
         echo ""

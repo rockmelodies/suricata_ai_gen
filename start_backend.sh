@@ -43,6 +43,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # Start Flask backend
+# Disable debug mode to reduce verbose output
+export FLASK_DEBUG=0
+export FLASK_ENV=production
+
 echo ""
 echo "========================================"
 echo "  Backend is starting..."
@@ -52,4 +56,11 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-python backend/app.py
+# Redirect output to log file to reduce console clutter
+python backend/app.py > backend.log 2>&1 &
+BACKEND_PID=$!
+echo $BACKEND_PID > backend.pid
+
+echo "Backend PID: $BACKEND_PID"
+echo "Log file: backend.log"
+echo "To view logs: tail -f backend.log"
