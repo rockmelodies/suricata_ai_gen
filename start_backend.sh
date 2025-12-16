@@ -64,3 +64,6 @@ echo $BACKEND_PID > backend.pid
 echo "Backend PID: $BACKEND_PID"
 echo "Log file: backend.log"
 echo "To view logs: tail -f backend.log"
+
+# Keep the script running
+wait $BACKEND_PID

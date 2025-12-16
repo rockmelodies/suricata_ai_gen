@@ -37,3 +37,6 @@ echo $FRONTEND_PID > frontend.pid
 echo "Frontend PID: $FRONTEND_PID"
 echo "Log file: frontend.log"
 echo "To view logs: tail -f frontend.log"
+
+# Keep the script running
+wait $FRONTEND_PID

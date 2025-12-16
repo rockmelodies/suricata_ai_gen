@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Suricata Rule Generator - Start All Services (Linux)
 
@@ -28,11 +28,11 @@ if command -v tmux &> /dev/null; then
     
     # Create new session with backend
     # Redirect output to log file to reduce console clutter
-    tmux new-session -d -s $SESSION_NAME -n "Backend" "./start_backend.sh > /dev/null 2>&1"
+    tmux new-session -d -s $SESSION_NAME -n "Backend" "bash -c './start_backend.sh > /dev/null 2>&1; read'"
     
     # Create new window for frontend
     # Redirect output to log file to reduce console clutter
-    tmux new-window -t $SESSION_NAME -n "Frontend" "./start_frontend.sh > /dev/null 2>&1"
+    tmux new-window -t $SESSION_NAME -n "Frontend" "bash -c './start_frontend.sh > /dev/null 2>&1; read'"
     
     # Select backend window
     tmux select-window -t $SESSION_NAME:0
@@ -76,13 +76,13 @@ else
         screen -S $SESSION_NAME -X quit 2>/dev/null
         
         # Start backend in screen
-        screen -dmS "${SESSION_NAME}_backend" bash -c "./start_backend.sh > /dev/null 2>&1"
+        screen -dmS "${SESSION_NAME}_backend" bash -c "./start_backend.sh > /dev/null 2>&1; read"
         
         # Wait a moment
         sleep 2
         
         # Start frontend in another screen
-        screen -dmS "${SESSION_NAME}_frontend" bash -c "./start_frontend.sh > /dev/null 2>&1"
+        screen -dmS "${SESSION_NAME}_frontend" bash -c "./start_frontend.sh > /dev/null 2>&1; read"
         
         echo "============================================"
         echo "   Services are starting in screen..."
