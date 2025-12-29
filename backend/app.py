@@ -270,6 +270,8 @@ def build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc):
 
 【SQL注入】
 alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri.raw; content:"请求uri的内容"; nocase; content:"可以执行sql注入命令的参数="; nocase; pcre:"/可以执行sql注入命令的参数=[^\r\n\x26]{0,10}(select|union|sleep|load(\x5f|%5f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(\x2d|%2d){2}|\x27|%27|\x23|%23)/Ii"; sid:XXXXXXX; rev:1;)
+或者
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容";http.request_body;nocase; content:"可以执行sql注入命令的参数="; nocase; pcre:"/可以执行sql注入命令的参数==[^\r\n\x26]{0,10}(select|union|sleep|load(\x5f|\x255f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(\x2d|%2d){2}|\x27|%27|\x23|%23)/Pi"; sid:XXXXXXX; rev:1;)
 
 【命令注入】
 alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; http.request_body; content:"可以执行命令的参数key="; nocase; pcre:"/可以执行命令的参数=[^\r\n\x26]{0,10}(\x60|\x2560|\x27|\x2527|\x3b|\x253b|\x7c|\x257c)/Pi"; sid:XXXXXXX; rev:1;)
