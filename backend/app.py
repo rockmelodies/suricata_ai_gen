@@ -289,7 +289,7 @@ alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; h
 alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; content:"参考这个op=GetUsersInfo套用吧"; nocase; http.header.raw; content:!"|0a|参考这个Authorization套用吧"; nocase; content:!"|0a|参考这个Cookie套用吧"; nocase; sid:XXXXXXX; rev:1;)
 
 5. 重要注意事项:
-   - pcre正则表达式中的匹配部分（select|union|sleep等）不要修改，只替换参数名
+   - pcre正则表达式中的匹配部分[^\r\n\x26]{0,10}(select|union|sleep|load(\x5f|\x255f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(-|%2d){2}|'|%27|#|%23)/Pi"; 等）不要修改，只替换参数名
    - 严格按照模板格式，不要添加reference, classtype, affected_version等字段
    - sid必须是7位数字，范围在9000000-9999999
    - 根据漏洞类型选择对应的模板，严格遵循模板结构
