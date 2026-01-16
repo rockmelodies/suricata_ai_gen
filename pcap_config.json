@@ -1,0 +1,10 @@
+{
+  "default_pcap_path": "/home/kali/pcap_check",
+  "upload_dir": "uploads",
+  "uploaded_pcaps": [],
+  "config_file_path": "pcap_config.json",
+  "suricata_rules_dir": "D:\\Program Files\\Suricata\\rules",
+  "suricata_config": "D:\\Program Files\\Suricata\\suricata.yaml",
+  "suricata_log_dir": "D:\\Program Files\\Suricata\\log",
+  "pcap_dir": "uploads"
+}

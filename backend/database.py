@@ -67,6 +67,17 @@ class Database:
             )
         ''')
         
+        # Configuration table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS configurations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_key TEXT UNIQUE NOT NULL,
+                config_value TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # Create indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_rules_vuln_name ON rules(vuln_name)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_rules_status ON rules(status)')
@@ -224,3 +235,44 @@ class Database:
         conn.close()
         
         return [dict(row) for row in rows]
+    
+    def get_config(self, config_key: str) -> Optional[str]:
+        """Get configuration value by key"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT config_value FROM configurations WHERE config_key = ?', (config_key,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        return row['config_value'] if row else None
+    
+    def set_config(self, config_key: str, config_value: str) -> bool:
+        """Set configuration value by key"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                INSERT OR REPLACE INTO configurations (config_key, config_value, updated_at) 
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+            ''', (config_key, config_value))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Error setting config {config_key}: {e}")
+            conn.close()
+            return False
+    
+    def get_all_configs(self) -> Dict[str, str]:
+        """Get all configuration values"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT config_key, config_value FROM configurations')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return {row['config_key']: row['config_value'] for row in rows}

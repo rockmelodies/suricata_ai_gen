@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
-# Suricata Rule Generation and Validation Tool - Backend API
+# Suricata Rule Generation and Validation Tool - Backend API v2
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -9,9 +9,10 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from database import Database
-from ai_client import AIChatClient
+from llm_client import create_llm_client_from_env
 from suricata_validator import SuricataValidator
-from pcap_manager import pcap_manager
+from config_manager import ConfigManager
+from user_model import UserModel
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,12 +26,77 @@ if not API_KEY:
     raise ValueError("AI_API_KEY not found in environment variables. Please create a .env file with AI_API_KEY=your_key")
 
 AI_MODEL = os.getenv('AI_MODEL', '360gpt-pro')
-DB_PATH = os.getenv('DB_PATH', os.path.join(os.path.dirname(__file__), 'suricata_rules.db'))
+DB_PATH = os.getenv('DB_PATH', os.path.abspath(os.path.join(os.path.dirname(__file__), 'suricata_rules.db')))
 
 # Initialize components
 db = Database(DB_PATH)
-ai_client = AIChatClient(API_KEY, model=AI_MODEL)
-suricata_validator = SuricataValidator()
+db.init_db()  # Initialize database tables
+llm_client = create_llm_client_from_env()
+
+# Initialize config manager
+config_manager = ConfigManager(db)
+# Update the config_manager module's global variable
+config_manager_module = __import__('config_manager')
+config_manager_module.config_manager = config_manager
+
+# Migration: Import existing config from JSON file, with option to override existing values
+import os
+import json
+json_config_path = "pcap_config.json"
+try:
+    if os.path.exists(json_config_path):
+        with open(json_config_path, 'r', encoding='utf-8') as f:
+            # Use a more robust approach to handle potential escape sequence issues in JSON
+            try:
+                # Try direct JSON parsing first
+                import json
+                f.seek(0)  # Reset file pointer
+                json_config = json.load(f)
+            except json.JSONDecodeError:
+                # If direct parsing fails, try to fix common path-related escape issues
+                f.seek(0)
+                raw_content = f.read()
+                # Simple approach: replace commonly problematic path strings
+                import re
+                
+                # Replace unescaped backslashes in path-like strings
+                # This looks for patterns like "key": "C:\path\to\somewhere" and properly escapes them
+                def fix_unescaped_backslashes(text):
+                    # Find quoted strings and fix backslashes within them
+                    def quote_replacer(match):
+                        inner = match.group(1)
+                        # Replace unescaped backslashes that are likely part of file paths
+                        # We look for patterns like C:, D:, etc. or common path structures
+                        fixed = re.sub(r'(?<!\\)\\(?!\\|")', r'\\\\', inner)
+                        return '"' + fixed + '"'
+                    
+                    return re.sub(r'"((?:\\.|[^"\\])*)"', quote_replacer, text)
+                
+                fixed_content = fix_unescaped_backslashes(raw_content)
+                json_config = json.loads(fixed_content)
+        # Migrate all config values to database, overriding existing ones if they differ
+        for key, value in json_config.items():
+            existing_value = config_manager.db.get_config(key)
+            if existing_value is None or existing_value == f'C:\\Program Files\\Suricata\\{key.split("_")[-1]}':  # Check if it's still using default C: path
+                config_manager.set_config(key, value)
+                print(f"迁移配置项: {key} = {value}")
+            elif existing_value != str(value):  # If JSON value differs from database value
+                # Ask user preference, but for now we'll prioritize JSON as it might be more recently updated
+                config_manager.set_config(key, value)
+                print(f"更新配置项: {key} = {value}")
+except Exception as e:
+    print(f"警告: 配置迁移过程中出错: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Initialize pcap manager DB
+from pcap_manager_db import PCAPManagerDB
+pcap_manager_db = PCAPManagerDB(db)
+
+# 注意：为了避免在启动时使用错误的默认值，我们将不在这里创建全局实例
+# 而是在每个请求中动态创建，以确保使用最新的配置
+suricata_validator = None  # 不再使用全局实例
+user_model = UserModel(DB_PATH)
 
 
 @app.route('/api/health', methods=['GET'])
@@ -55,15 +121,12 @@ def generate_rule():
         # Build AI prompt based on the specification
         prompt = build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc)
         
-        # Call AI to generate rule
-        payload = ai_client.create_payload(
-            user_id="suricata_rule_generator",
-            content=prompt,
-            temperature=0.7,
-            max_tokens=2048
+        # Call LLM to generate rule
+        ai_response = llm_client.generate_text(
+            prompt,
+            temperature=0.1,
+            max_tokens=4096
         )
-        
-        ai_response = ai_client.send_request(payload)
         
         # Extract generated rule from AI response
         if 'choices' in ai_response and len(ai_response['choices']) > 0:
@@ -107,15 +170,12 @@ def optimize_rule():
         # Build optimization prompt
         prompt = build_rule_optimization_prompt(current_rule, feedback, validation_result)
         
-        # Call AI to optimize rule
-        payload = ai_client.create_payload(
-            user_id="suricata_rule_optimizer",
-            content=prompt,
-            temperature=0.6,
-            max_tokens=2048
+        # Call LLM to optimize rule
+        ai_response = llm_client.generate_text(
+            prompt,
+            temperature=0.3,
+            max_tokens=4096
         )
-        
-        ai_response = ai_client.send_request(payload)
         
         # Extract optimized rule
         if 'choices' in ai_response and len(ai_response['choices']) > 0:
@@ -156,8 +216,20 @@ def validate_rule():
         if not rule_content:
             return jsonify({"error": "缺少规则内容"}), 400
         
+        # 使用最新配置创建临时SuricataValidator实例
+        if config_manager is None:
+            return jsonify({"error": "配置管理器未初始化"}), 500
+        
+        from suricata_validator import SuricataValidator
+        current_suricata_validator = SuricataValidator.create_validator(
+            rules_dir=config_manager.get_config('suricata_rules_dir', 'C:\\Program Files\\Suricata\\rules'),
+            suricata_config=config_manager.get_config('suricata_config', 'C:\\Program Files\\Suricata\\suricata.yaml'),
+            log_dir=config_manager.get_config('suricata_log_dir', 'C:\\Program Files\\Suricata\\log'),
+            config_manager=config_manager
+        )
+        
         # Validate the rule
-        validation_result = suricata_validator.validate_rule(rule_content, pcap_path)
+        validation_result = current_suricata_validator.validate_rule(rule_content, pcap_path)
         
         # Save validation result to database
         if rule_id:
@@ -237,16 +309,10 @@ def get_validation_history(rule_id):
 def get_pcap_config():
     """Get current PCAP configuration"""
     try:
-        default_path = pcap_manager.get_default_pcap_path()
-        upload_dir = pcap_manager.config.get("upload_dir", "uploads")
-        config_file_path = pcap_manager.config.get("config_file_path", "pcap_config.json")
+        config = config_manager.get_all_configs()
         return jsonify({
             "success": True,
-            "config": {
-                "default_pcap_path": default_path,
-                "upload_dir": upload_dir,
-                "config_file_path": config_file_path
-            }
+            "config": config
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -259,12 +325,12 @@ def set_pcap_config():
         data = request.json
         
         # Support both old format (just path) and new format (full config)
-        if 'default_pcap_path' in data or 'upload_dir' in data:
-            success = pcap_manager.update_config(data)
+        if 'default_pcap_path' in data or 'upload_dir' in data or 'suricata_rules_dir' in data or 'suricata_config' in data or 'suricata_log_dir' in data or 'pcap_dir' in data:
+            success = config_manager.update_configs(data)
         else:
             # Backward compatibility - just update the path
             path = data.get('default_pcap_path', '/home/kali/pcap_check')
-            success = pcap_manager.set_default_pcap_path(path)
+            success = config_manager.set_default_pcap_path(path)
         if success:
             return jsonify({
                 "success": True,
@@ -293,7 +359,7 @@ def upload_pcap():
         if not file.filename.lower().endswith('.pcap'):
             return jsonify({"error": "只支持PCAP格式文件"}), 400
         
-        result = pcap_manager.upload_pcap(file, file.filename)
+        result = pcap_manager_db.upload_pcap(file, file.filename)
         if result['success']:
             return jsonify(result), 200
         else:
@@ -306,7 +372,7 @@ def upload_pcap():
 def list_pcaps():
     """List all uploaded PCAP files"""
     try:
-        pcaps = pcap_manager.list_uploaded_pcaps()
+        pcaps = pcap_manager_db.list_uploaded_pcaps()
         return jsonify({
             "success": True,
             "pcaps": pcaps
@@ -319,7 +385,7 @@ def list_pcaps():
 def delete_pcap(filename):
     """Delete uploaded PCAP file"""
     try:
-        result = pcap_manager.delete_pcap(filename)
+        result = pcap_manager_db.delete_pcap(filename)
         if result['success']:
             return jsonify(result), 200
         else:
@@ -344,15 +410,31 @@ def validate_with_uploaded_pcap():
             return jsonify({"error": "请选择PCAP文件"}), 400
         
         # Get the full path of the uploaded PCAP
-        pcap_path = pcap_manager.get_pcap_path(pcap_filename)
+        pcap_path = pcap_manager_db.get_pcap_path(pcap_filename)
         if not pcap_path:
             return jsonify({"error": "PCAP文件不存在"}), 404
         
         # Get the directory of the PCAP file
         pcap_dir = os.path.dirname(pcap_path)
         
+        # Ensure directory exists
+        if not os.path.exists(pcap_dir):
+            return jsonify({"error": "PCAP目录不存在"}), 404
+        
+        # 使用最新配置创建临时SuricataValidator实例
+        if config_manager is None:
+            return jsonify({"error": "配置管理器未初始化"}), 500
+        
+        from suricata_validator import SuricataValidator
+        current_suricata_validator = SuricataValidator.create_validator(
+            rules_dir=config_manager.get_config('suricata_rules_dir', 'C:\\Program Files\\Suricata\\rules'),
+            suricata_config=config_manager.get_config('suricata_config', 'C:\\Program Files\\Suricata\\suricata.yaml'),
+            log_dir=config_manager.get_config('suricata_log_dir', 'C:\\Program Files\\Suricata\\log'),
+            config_manager=config_manager
+        )
+        
         # Validate the rule
-        validation_result = suricata_validator.validate_rule(rule_content, pcap_dir)
+        validation_result = current_suricata_validator.validate_rule(rule_content, pcap_dir)
         
         # Save validation result to database
         if rule_id:
@@ -368,6 +450,218 @@ def validate_with_uploaded_pcap():
         return jsonify({
             "success": True,
             "validation_result": validation_result
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """User login"""
+    try:
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({"error": "用户名和密码不能为空"}), 400
+        
+        user = user_model.verify_password(username, password)
+        if user:
+            # 返回用户信息（移除密码哈希）
+            safe_user = user_model.to_safe_dict(user)
+            return jsonify({
+                "success": True,
+                "message": "登录成功",
+                "user": safe_user,
+                "access_token": f"fake_token_for_{user['id']}"  # 实际应用中应生成真实JWT
+            })
+        else:
+            return jsonify({"error": "用户名或密码错误"}), 401
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    """User registration"""
+    try:
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email')
+        
+        if not username or not password:
+            return jsonify({"error": "用户名和密码不能为空"}), 400
+        
+        try:
+            user_id = user_model.create_user(username=username, password=password, email=email)
+            user = user_model.get_by_id(user_id)
+            safe_user = user_model.to_safe_dict(user)
+            return jsonify({
+                "success": True,
+                "message": "注册成功",
+                "user": safe_user
+            })
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/suricata/check', methods=['GET'])
+def check_suricata():
+    """Check if Suricata engine is available"""
+    try:
+        import platform
+        import subprocess
+        import shutil
+        
+        result = {
+            "os": platform.system(),
+            "suricata_available": False,
+            "version": None,
+            "config_found": False,
+            "config_path": None,
+            "rules_dir_exists": False,
+            "log_dir_exists": False,
+            "message": "",
+            "recommendation": ""
+        }
+        
+        # Check if suricata is available
+        suricata_cmd = shutil.which('suricata') or shutil.which('suricata.exe')
+        
+        if suricata_cmd:
+            result["suricata_available"] = True
+            result["message"] += f"找到Suricata命令: {suricata_cmd}"
+            
+            # Try to get version
+            try:
+                version_result = subprocess.run([suricata_cmd, '--version'], 
+                                              capture_output=True, text=True, timeout=10)
+                if version_result.returncode == 0:
+                    version_line = version_result.stdout.strip().split('\n')[0]
+                    result["version"] = version_line
+                    result["message"] += f", 版本: {version_line}"
+            except Exception as e:
+                result["message"] += f", 但无法获取版本信息: {str(e)}"
+        else:
+            result["message"] = "未找到Suricata命令"
+            if platform.system() == "Windows":
+                result["recommendation"] = "请从 https://github.com/OISF/suricata/releases 下载并安装Suricata，或配置SSH连接到Linux/Kali系统进行远程验证"
+            else:
+                result["recommendation"] = "请安装Suricata (Ubuntu/Debian: sudo apt-get install suricata)"
+            
+            # Even if suricata not found, let's check if we have SSH config for remote validation
+            ssh_host = config_manager.get_config('ssh_host')
+            ssh_user = config_manager.get_config('ssh_user')
+            if ssh_host and ssh_user:
+                result["recommendation"] += "\n已配置SSH参数，可通过SSH连接到远程系统进行验证。"
+            else:
+                result["recommendation"] += "\n建议配置SSH连接到Linux/Kali系统以进行远程验证。请在系统配置页面设置SSH参数。"
+        
+        # Check config file
+        possible_configs = [
+            "/etc/suricata/suricata.yaml",
+            "/usr/local/etc/suricata/suricata.yaml",
+            "/etc/default/suricata",
+            "C:\\Program Files\\Suricata\\suricata.yaml",
+            "C:\\suricata\\suricata.yaml",
+            "C:\\Program Files (x86)\\Suricata\\suricata.yaml",
+            # Also check configured path from config manager
+            config_manager.get_config('suricata_config', 'C:\\Program Files\\Suricata\\suricata.yaml')
+        ]
+        
+        for config_path in possible_configs:
+            if os.path.exists(config_path):
+                result["config_found"] = True
+                result["config_path"] = config_path
+                result["message"] += f", 找到配置文件: {config_path}"
+                break
+        
+        # Check if configured directories exist
+        rules_dir = config_manager.get_config('suricata_rules_dir', 'C:\\Program Files\\Suricata\\rules')
+        log_dir = config_manager.get_config('suricata_log_dir', 'C:\\Program Files\\Suricata\\log')
+        
+        result["rules_dir_exists"] = os.path.exists(rules_dir)
+        result["log_dir_exists"] = os.path.exists(log_dir)
+        
+        # Update the message to include actual configured paths
+        if result["rules_dir_exists"]:
+            result["message"] += f", 规则目录存在: {rules_dir}"
+        else:
+            result["message"] += f", 规则目录不存在: {rules_dir}"
+        
+        if result["log_dir_exists"]:
+            result["message"] += f", 日志目录存在: {log_dir}"
+        else:
+            result["message"] += f", 日志目录不存在: {log_dir}"
+        
+        # Final status
+        if result["suricata_available"] and result["config_found"]:
+            result["status"] = "ready"
+            result["message"] = "Suricata引擎已准备好，可以进行规则验证"
+        elif result["suricata_available"]:
+            result["status"] = "partial"
+            result["message"] = "Suricata已安装但配置文件路径可能需要调整"
+        else:
+            result["status"] = "unavailable"
+            result["message"] = "Suricata未安装或不可用，验证功能受限"
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user():
+    """Get current user info (mock implementation)"""
+    try:
+        # 这里应该验证token，为了简单起见，我们返回默认admin用户
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "未授权"}), 401
+        
+        # 简单解析token以获取用户ID
+        token = auth_header.split(' ')[1]
+        if not token.startswith('fake_token_for_'):
+            return jsonify({"error": "无效的令牌"}), 401
+        
+        user_id = int(token.replace('fake_token_for_', ''))
+        user = user_model.get_by_id(user_id)
+        if user:
+            safe_user = user_model.to_safe_dict(user)
+            return jsonify({
+                "success": True,
+                "user": safe_user
+            })
+        else:
+            return jsonify({"error": "用户不存在"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# 通配符路由，用于处理前端路由
+@app.route('/api/users', methods=['GET'])
+def list_users():
+    """List all users"""
+    try:
+        # 检查认证
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "未授权"}), 401
+        
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        
+        users_info = user_model.get_all_users(page=page, per_page=per_page)
+        return jsonify({
+            "success": True,
+            "users": users_info['users'],
+            "total": users_info['total'],
+            "page": users_info['page'],
+            "per_page": users_info['per_page']
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -443,7 +737,6 @@ alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; h
    - sid必须是7位数字，范围在9000000-9999999
    - 根据漏洞类型选择对应的模板，严格遵循模板结构
    
-
 请直接输出Suricata规则，不要包含其他解释文字。
 """
     
@@ -481,7 +774,8 @@ def build_rule_optimization_prompt(current_rule, feedback, validation_result):
 
 
 if __name__ == '__main__':
-    # Initialize database
+    # Initialize database and ensure directory exists
+    os.makedirs(os.path.dirname(db.db_path), exist_ok=True)
     db.init_db()
     
     # Check if debug mode is enabled via environment variable

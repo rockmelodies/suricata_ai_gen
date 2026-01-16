@@ -55,3 +55,4 @@ eve.json
 # Environment
 .env
 .env.local
+frontend-vue3/node_modules

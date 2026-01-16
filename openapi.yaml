@@ -1,0 +1,503 @@
+openapi: 3.0.0
+info:
+  title: Suricata规则生成API
+  version: 2.0.0
+  description: |
+    基于AI的Suricata规则生成、优化与验证平台
+    
+    ## 功能特性
+    - 🤖 AI驱动的规则生成
+    - 🔄 智能规则优化
+    - ✅ PCAP文件验证
+    - 👥 用户管理系统
+    - 🔐 JWT认证授权
+    
+    ## 认证方式
+    使用JWT Bearer Token进行认证。首先调用 `/api/auth/login` 获取token，
+    然后在请求头中添加: `Authorization: Bearer <token>`
+
+servers:
+  - url: http://localhost:5000/api
+    description: 开发服务器
+  - url: https://your-domain.com/api
+    description: 生产服务器
+
+tags:
+  - name: 认证
+    description: 用户认证相关接口
+  - name: 用户管理
+    description: 用户CRUD操作（需要管理员权限）
+  - name: 规则管理
+    description: Suricata规则的生成、查询、优化
+  - name: 规则验证
+    description: 使用PCAP文件验证规则
+
+paths:
+  /auth/register:
+    post:
+      summary: 用户注册
+      tags: [认证]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: testuser
+                password:
+                  type: string
+                  format: password
+                  example: password123
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+      responses:
+        201:
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        400:
+          description: 请求参数错误
+
+  /auth/login:
+    post:
+      summary: 用户登录
+      tags: [认证]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: admin123
+      responses:
+        200:
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        401:
+          description: 用户名或密码错误
+
+  /auth/me:
+    get:
+      summary: 获取当前用户信息
+      tags: [认证]
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        401:
+          description: 未授权
+
+  /users:
+    get:
+      summary: 获取用户列表
+      tags: [用户管理]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+        403:
+          description: 权限不足（需要管理员权限）
+
+  /users/{user_id}:
+    get:
+      summary: 获取用户详情
+      tags: [用户管理]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        404:
+          description: 用户不存在
+
+    put:
+      summary: 更新用户信息
+      tags: [用户管理]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        200:
+          description: 更新成功
+        403:
+          description: 权限不足
+
+    delete:
+      summary: 删除用户
+      tags: [用户管理]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: 删除成功
+        403:
+          description: 权限不足（需要管理员权限）
+        404:
+          description: 用户不存在
+
+  /rules/generate:
+    post:
+      summary: 生成Suricata规则
+      tags: [规则管理]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleGenerateRequest'
+      responses:
+        200:
+          description: 规则生成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  rule_id:
+                    type: integer
+                  generated_rule:
+                    type: string
+        400:
+          description: 请求参数错误
+
+  /rules:
+    get:
+      summary: 获取规则列表
+      tags: [规则管理]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Rule'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+
+  /rules/{rule_id}:
+    get:
+      summary: 获取规则详情
+      tags: [规则管理]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  rule:
+                    $ref: '#/components/schemas/Rule'
+        404:
+          description: 规则不存在
+
+  /rules/optimize:
+    post:
+      summary: 优化规则
+      tags: [规则管理]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleOptimizeRequest'
+      responses:
+        200:
+          description: 优化成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  optimized_rule:
+                    type: string
+
+  /validate:
+    post:
+      summary: 验证Suricata规则
+      tags: [规则验证]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateRequest'
+      responses:
+        200:
+          description: 验证完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  validation_result:
+                    type: object
+
+  /health:
+    get:
+      summary: 健康检查
+      responses:
+        200:
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                  version:
+                    type: string
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 输入格式：Bearer <access_token>
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT访问令牌
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        is_active:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserUpdate:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        is_active:
+          type: integer
+
+    RuleGenerateRequest:
+      type: object
+      required:
+        - vuln_name
+        - vuln_description
+      properties:
+        vuln_name:
+          type: string
+          description: 漏洞名称
+          example: "Apache Struts2 远程代码执行漏洞"
+        vuln_description:
+          type: string
+          description: 漏洞描述
+          example: "攻击者可以通过构造恶意请求执行任意代码"
+        vuln_type:
+          type: string
+          description: 漏洞类型
+          example: "命令注入"
+        poc:
+          type: string
+          description: POC示例
+
+    Rule:
+      type: object
+      properties:
+        id:
+          type: integer
+        vuln_name:
+          type: string
+        vuln_type:
+          type: string
+        description:
+          type: string
+        original_rule:
+          type: string
+        current_rule:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+
+    RuleOptimizeRequest:
+      type: object
+      required:
+        - current_rule
+      properties:
+        rule_id:
+          type: integer
+        current_rule:
+          type: string
+        feedback:
+          type: string
+        validation_result:
+          type: string
+
+    ValidateRequest:
+      type: object
+      required:
+        - rule_content
+      properties:
+        rule_content:
+          type: string
+          description: 规则内容
+        rule_id:
+          type: integer
+          description: 规则ID
+        pcap_path:
+          type: string
+          description: PCAP文件路径
+          default: /home/kali/pcap_check
