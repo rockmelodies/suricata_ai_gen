@@ -221,10 +221,15 @@ def validate_rule():
             return jsonify({"error": "配置管理器未初始化"}), 500
         
         from suricata_validator import SuricataValidator
+        # 从配置管理器获取配置，如果不存在则从环境变量获取默认值
+        rules_dir = config_manager.get_config('suricata_rules_dir') or os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
+        suricata_config = config_manager.get_config('suricata_config') or os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
+        log_dir = config_manager.get_config('suricata_log_dir') or os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
+        
         current_suricata_validator = SuricataValidator.create_validator(
-            rules_dir=config_manager.get_config('suricata_rules_dir', 'C:\\Program Files\\Suricata\\rules'),
-            suricata_config=config_manager.get_config('suricata_config', 'C:\\Program Files\\Suricata\\suricata.yaml'),
-            log_dir=config_manager.get_config('suricata_log_dir', 'C:\\Program Files\\Suricata\\log'),
+            rules_dir=rules_dir,
+            suricata_config=suricata_config,
+            log_dir=log_dir,
             config_manager=config_manager
         )
         
@@ -426,10 +431,15 @@ def validate_with_uploaded_pcap():
             return jsonify({"error": "配置管理器未初始化"}), 500
         
         from suricata_validator import SuricataValidator
+        # 从配置管理器获取配置，如果不存在则从环境变量获取默认值
+        rules_dir = config_manager.get_config('suricata_rules_dir') or os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
+        suricata_config = config_manager.get_config('suricata_config') or os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
+        log_dir = config_manager.get_config('suricata_log_dir') or os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
+        
         current_suricata_validator = SuricataValidator.create_validator(
-            rules_dir=config_manager.get_config('suricata_rules_dir', 'C:\\Program Files\\Suricata\\rules'),
-            suricata_config=config_manager.get_config('suricata_config', 'C:\\Program Files\\Suricata\\suricata.yaml'),
-            log_dir=config_manager.get_config('suricata_log_dir', 'C:\\Program Files\\Suricata\\log'),
+            rules_dir=rules_dir,
+            suricata_config=suricata_config,
+            log_dir=log_dir,
             config_manager=config_manager
         )
         
@@ -570,7 +580,7 @@ def check_suricata():
             "C:\\suricata\\suricata.yaml",
             "C:\\Program Files (x86)\\Suricata\\suricata.yaml",
             # Also check configured path from config manager
-            config_manager.get_config('suricata_config', 'C:\\Program Files\\Suricata\\suricata.yaml')
+            config_manager.get_config('suricata_config') or os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
         ]
         
         for config_path in possible_configs:
@@ -581,8 +591,8 @@ def check_suricata():
                 break
         
         # Check if configured directories exist
-        rules_dir = config_manager.get_config('suricata_rules_dir', 'C:\\Program Files\\Suricata\\rules')
-        log_dir = config_manager.get_config('suricata_log_dir', 'C:\\Program Files\\Suricata\\log')
+        rules_dir = config_manager.get_config('suricata_rules_dir') or os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
+        log_dir = config_manager.get_config('suricata_log_dir') or os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
         
         result["rules_dir_exists"] = os.path.exists(rules_dir)
         result["log_dir_exists"] = os.path.exists(log_dir)

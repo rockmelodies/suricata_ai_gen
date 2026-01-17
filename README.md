@@ -996,6 +996,10 @@ setup_env() {
   mkdir -p backend/
   touch backend/suricata_rules.db
   chmod 664 backend/suricata_rules.db
+  
+  # 确保上传目录存在
+  mkdir -p uploads/
+  chmod 755 uploads/
 }
 
 # 创建PCAP目录
@@ -1392,7 +1396,7 @@ GET /api/rules/{rule_id}
 
 ### 环境变量配置
 
-在 `.env` 文件中可以通过环境变量配置，支持多种LLM提供商：
+在 `.env` 文件中可以通过环境变量配置，支持多种LLM提供商和系统配置：
 
 ```bash
 # =============================================
@@ -1451,19 +1455,21 @@ AI_API_KEY=fk168504229.9Pl3_jloeolkP9ohP5V2fPDJXUAV8l_7f24a0813
 AI_MODEL=360gpt-pro
 
 # 数据库路径
-DB_PATH=/path/to/database.db
+DB_PATH=backend/suricata_rules.db
 
 # Suricata配置 (Linux/Kali)
 SURICATA_RULES_DIR=/var/lib/suricata/rules
 SURICATA_CONFIG=/etc/suricata/suricata.yaml
 SURICATA_LOG_DIR=/var/log/suricata
 PCAP_DIR=/home/kali/pcap_check
+UPLOAD_DIR=uploads
+CONFIG_FILE_PATH=pcap_config.json
 
 # SSH配置 (Windows连接Kali VM)
 SSH_ENABLED=false
-SSH_HOST=192.168.1.100
+SSH_HOST=
 SSH_USER=kali
-SSH_KEY=/path/to/private_key
+SSH_KEY=
 
 # Flask配置
 FLASK_HOST=0.0.0.0

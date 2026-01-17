@@ -14,18 +14,17 @@ class ConfigManager:
 
     def load_or_create_defaults(self):
         """Load configuration or create defaults if they don't exist"""
-        # Define default configuration values
+        # Define default configuration values from environment variables or hardcoded defaults
         defaults = {
-            "default_pcap_path": "/home/kali/pcap_check",
-            "upload_dir": "uploads",
-            "config_file_path": "pcap_config.json",
-            "suricata_rules_dir": ":\\Program Files\\Suricata\\rules",
-            "suricata_config": "C:\\Program Files\\Suricata\\suricata.yaml",
-            "suricata_log_dir": "C:\\Program Files\\Suricata\\log",
-            "pcap_dir": "C:\\pcap_check",
-            "ssh_host": "",
-            "ssh_user": "",
-            "ssh_key": ""
+            "default_pcap_path": os.getenv('PCAP_DIR', '/home/kali/pcap_check'),
+            "upload_dir": os.getenv('UPLOAD_DIR', 'uploads'),
+            "config_file_path": os.getenv('CONFIG_FILE_PATH', 'pcap_config.json'),
+            "suricata_rules_dir": os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules'),
+            "suricata_config": os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml'),
+            "suricata_log_dir": os.getenv('SURICATA_LOG_DIR', '/var/log/suricata'),
+            "ssh_host": os.getenv('SSH_HOST', ''),
+            "ssh_user": os.getenv('SSH_USER', 'kali'),
+            "ssh_key": os.getenv('SSH_KEY', '')
         }
         
         # Load or create each config value
