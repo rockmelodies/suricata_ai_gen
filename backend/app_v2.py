@@ -26,7 +26,7 @@ if not API_KEY:
     raise ValueError("AI_API_KEY not found in environment variables. Please create a .env file with AI_API_KEY=your_key")
 
 AI_MODEL = os.getenv('AI_MODEL', '360gpt-pro')
-DB_PATH = os.getenv('DB_PATH', os.path.abspath(os.path.join(os.path.dirname(__file__), 'suricata_rules.db')))
+DB_PATH = os.getenv('DB_PATH', os.path.join(os.path.dirname(__file__), 'suricata_rules.db'))
 
 # Initialize components
 db = Database(DB_PATH)

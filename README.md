@@ -991,6 +991,11 @@ setup_env() {
     echo "LLM_MODEL=gpt-4o-mini" >> .env
     echo "LLM_BASE_URL=https://api.openai.com/v1" >> .env
   fi
+  
+  # 确保数据库目录和文件存在
+  mkdir -p backend/
+  touch backend/suricata_rules.db
+  chmod 664 backend/suricata_rules.db
 }
 
 # 创建PCAP目录
@@ -1024,6 +1029,9 @@ main() {
   echo ""
   echo "或者使用一键启动脚本："
   echo "chmod +x start_all.sh && ./start_all.sh"
+  echo ""
+  echo "对于Kali Linux环境，我们还提供了专门的启动脚本："
+  echo "chmod +x start_kali.sh && ./start_kali.sh"
   echo ""
 }
 
@@ -1097,6 +1105,22 @@ sudo systemctl start suricata
 
 # 检查服务状态
 sudo systemctl status suricata
+```
+
+**解决数据库权限问题（关键步骤）：**
+```bash
+# 确保项目目录权限正确
+mkdir -p /home/kali/suricata_ai_gen/backend
+chmod -R 755 /home/kali/suricata_ai_gen/
+
+# 创建并设置数据库文件权限
+touch /home/kali/suricata_ai_gen/backend/suricata_rules.db
+chmod 664 /home/kali/suricata_ai_gen/backend/suricata_rules.db
+
+# 或者，如果使用当前目录作为项目目录
+mkdir -p backend/
+touch backend/suricata_rules.db
+chmod 664 backend/suricata_rules.db
 ```
 
 **配置Suricata规则更新：**
@@ -2004,6 +2028,25 @@ sudo chmod 664 /path/to/database.db
 # 对于Suricata相关目录
 sudo chown $USER:$USER /var/lib/suricata/rules
 sudo chown $USER:$USER /var/log/suricata
+```
+
+**问题18：数据库无法打开**
+```bash
+# 现象：sqlite3.OperationalError: unable to open database file
+# 解决方法1：检查并创建数据库目录
+mkdir -p backend/
+cd backend/
+touch suricata_rules.db
+chmod 664 suricata_rules.db
+
+# 解决方法2：检查环境变量
+printenv | grep DB_PATH
+
+# 解决方法3：使用绝对路径
+export DB_PATH=/home/kali/suricata_ai_gen/backend/suricata_rules.db
+
+# 解决方法4：运行专门的启动脚本
+python backend/start_app.py
 ```
 
 **问题2：Python模块找不到**

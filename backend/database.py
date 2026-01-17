@@ -14,6 +14,24 @@ class Database:
     
     def get_connection(self):
         """Get database connection"""
+        import os
+        import sys
+        
+        # Ensure the directory for the database exists
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+        
+        # Check if we have write permissions to the directory
+        if db_dir and not os.access(db_dir, os.W_OK):
+            print(f"错误: 没有写入权限到目录 {db_dir}", file=sys.stderr)
+            raise PermissionError(f"没有写入权限到目录 {db_dir}")
+        
+        # Check if the file is writable (if it exists)
+        if os.path.exists(self.db_path) and not os.access(self.db_path, os.W_OK):
+            print(f"错误: 没有写入权限到数据库文件 {self.db_path}", file=sys.stderr)
+            raise PermissionError(f"没有写入权限到数据库文件 {self.db_path}")
+        
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
