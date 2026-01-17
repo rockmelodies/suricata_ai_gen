@@ -73,13 +73,13 @@ if [ -f "frontend.pid" ]; then
     rm -f frontend.pid
 else
     # Fallback to port-based killing
-    FRONTEND_PID=$(lsof -ti:8080 2>/dev/null)
+    FRONTEND_PID=$(lsof -ti:5173 2>/dev/null)
     if [ ! -z "$FRONTEND_PID" ]; then
         echo "Killing frontend process (PID: $FRONTEND_PID)..."
         kill -9 $FRONTEND_PID 2>/dev/null
         echo "✓ Frontend stopped"
     else
-        echo "  No process found on port 8080"
+        echo "  No process found on port 5173"
     fi
 fi
 

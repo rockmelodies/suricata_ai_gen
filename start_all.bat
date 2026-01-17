@@ -22,16 +22,16 @@ echo   All services are starting...
 echo ============================================
 echo.
 echo   Backend:  http://localhost:5000
-echo   Frontend: http://localhost:8080
+echo   Frontend: http://localhost:5173
 echo.
 echo   Open your browser and go to:
-echo   http://localhost:8080
+echo   http://localhost:5173
 echo.
 echo ============================================
 
 timeout /t 5
 
-start http://localhost:8080
+start http://localhost:5173
 
 echo.
 echo Press any key to exit...

@@ -42,7 +42,7 @@ if command -v tmux &> /dev/null; then
     echo "============================================"
     echo ""
     echo "   Backend:  http://localhost:5000"
-    echo "   Frontend: http://localhost:8080"
+    echo "   Frontend: http://localhost:5173"
     echo ""
     echo "   To attach to session: tmux attach -t $SESSION_NAME"
     echo "   To switch windows: Ctrl+B then 0/1"
@@ -57,9 +57,9 @@ if command -v tmux &> /dev/null; then
     
     # Try to open browser
     if command -v xdg-open &> /dev/null; then
-        xdg-open http://localhost:8080 &> /dev/null &
+        xdg-open http://localhost:5173 &> /dev/null &
     elif command -v sensible-browser &> /dev/null; then
-        sensible-browser http://localhost:8080 &> /dev/null &
+        sensible-browser http://localhost:5173 &> /dev/null &
     fi
     
     # Attach to tmux session
@@ -89,7 +89,7 @@ else
         echo "============================================"
         echo ""
         echo "   Backend:  http://localhost:5000"
-        echo "   Frontend: http://localhost:8080"
+        echo "   Frontend: http://localhost:5173"
         echo ""
         echo "   To view backend:  screen -r ${SESSION_NAME}_backend"
         echo "   To view frontend: screen -r ${SESSION_NAME}_frontend"
@@ -101,9 +101,9 @@ else
         
         # Try to open browser
         if command -v xdg-open &> /dev/null; then
-            xdg-open http://localhost:8080 &> /dev/null &
+            xdg-open http://localhost:5173 &> /dev/null &
         elif command -v sensible-browser &> /dev/null; then
-            sensible-browser http://localhost:8080 &> /dev/null &
+            sensible-browser http://localhost:5173 &> /dev/null &
         fi
         
         echo "Servers are running in background."
@@ -140,7 +140,7 @@ else
         echo "   Frontend PID: $FRONTEND_PID"
         echo ""
         echo "   Backend:  http://localhost:5000"
-        echo "   Frontend: http://localhost:8080"
+        echo "   Frontend: http://localhost:5173"
         echo ""
         echo "   To stop services:"
         echo "   kill $BACKEND_PID $FRONTEND_PID"
@@ -150,9 +150,9 @@ else
         
         # Try to open browser
         if command -v xdg-open &> /dev/null; then
-            xdg-open http://localhost:8080 &> /dev/null &
+            xdg-open http://localhost:5173 &> /dev/null &
         elif command -v sensible-browser &> /dev/null; then
-            sensible-browser http://localhost:8080 &> /dev/null &
+            sensible-browser http://localhost:5173 &> /dev/null &
         fi
         
         # Wait for user interrupt

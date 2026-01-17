@@ -9,34 +9,34 @@ echo ""
 
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR/frontend"
+cd "$SCRIPT_DIR/frontend-vue3"
 
-# Check if Python is available
-if ! command -v python3 &> /dev/null; then
-    echo "Python3 is not installed!"
-    echo "Please install Python3 first."
+# Check if Node.js is available
+if ! command -v node &> /dev/null; then
+    echo "Node.js is not installed!"
+    echo "Please install Node.js first."
     exit 1
 fi
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    echo "npm is not installed!"
+    echo "Please install Node.js first."
+    exit 1
+fi
+
+echo "Installing dependencies..."
+npm install
 
 echo "Frontend server starting..."
 echo ""
 echo "========================================"
-echo "  Frontend URL: http://localhost:8080"
-echo "  Remote access: http://<your-ip>:8080"
+echo "  Frontend URL: http://localhost:5173"
+echo "  Remote access: http://<your-ip>:5173"
 echo "========================================"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-# Bind to 0.0.0.0 to allow remote access
-# Redirect output to log file to reduce console clutter
-python3 -m http.server 8080 --bind 0.0.0.0 > frontend.log 2>&1 &
-FRONTEND_PID=$!
-echo $FRONTEND_PID > frontend.pid
-
-echo "Frontend PID: $FRONTEND_PID"
-echo "Log file: frontend.log"
-echo "To view logs: tail -f frontend.log"
-
-# Keep the script running
-wait $FRONTEND_PID
+# Start the Vite development server with host binding
+npm run dev -- --host 0.0.0.0
