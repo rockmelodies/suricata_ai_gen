@@ -1238,10 +1238,10 @@ chmod +x start_backend.sh
 **手动启动:**
 ```bash
 cd backend
-python app.py
+python start_app.py
 ```
 
-后端将运行在 `http://localhost:5000`
+后端将运行在 `http://0.0.0.0:5000`
 
 #### 4. 启动前端界面
 

@@ -57,7 +57,7 @@ echo "Press Ctrl+C to stop the server"
 echo ""
 
 # Redirect output to log file to reduce console clutter
-python backend/app.py > backend.log 2>&1 &
+python backend/start_app.py > backend.log 2>&1 &
 BACKEND_PID=$!
 echo $BACKEND_PID > backend.pid
 

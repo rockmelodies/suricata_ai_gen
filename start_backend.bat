@@ -23,6 +23,6 @@ REM Start Flask backend
 echo.
 echo Starting Flask backend on http://localhost:5000
 echo.
-python backend\app.py
+python backend\start_app.py
 
 pause
