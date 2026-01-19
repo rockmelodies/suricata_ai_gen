@@ -614,8 +614,6 @@ const handleSizeChange = (size: number) => {
 
 <style scoped>
 .rule-list-container {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 20px;
 }
 
