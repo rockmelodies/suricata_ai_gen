@@ -176,9 +176,9 @@ class SuricataValidator:
                 "log_dir": self.log_dir,
                 "pcap_path": pcap_path,
                 "rule_file": rule_file,
-                "command_using_c_flag": True,
+                "command_using_c_flag": False,
                 "command_using_s_flag": True,
-                "command_using_l_flag": True
+                "command_using_l_flag": False
             }
             
             # Get PCAP files to process
