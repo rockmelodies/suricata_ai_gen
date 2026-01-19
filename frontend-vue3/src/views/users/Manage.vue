@@ -83,39 +83,39 @@
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column prop="updated_at" label="更新时间" width="180" />
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
-            <el-button-group>
+            <el-button-group class="action-buttons">
               <el-button
                 type="primary"
                 size="small"
+                :icon="Edit"
                 @click="handleEdit(row)"
               >
-                <el-icon><Edit /></el-icon>
                 编辑
               </el-button>
               <el-button
-                type="success"
+                :type="row.status === 'active' ? 'warning' : 'success'"
                 size="small"
+                :icon="row.status === 'active' ? CircleCheck : CircleCheckFilled"
                 @click="handleToggleStatus(row)"
               >
-                <el-icon><CircleCheck /></el-icon>
                 {{ row.status === 'active' ? '禁用' : '激活' }}
               </el-button>
               <el-button
-                type="warning"
+                type="info"
                 size="small"
+                :icon="Lock"
                 @click="handleResetPassword(row)"
               >
-                <el-icon><Lock /></el-icon>
                 重置密码
               </el-button>
               <el-button
                 type="danger"
                 size="small"
+                :icon="Delete"
                 @click="handleDelete(row)"
               >
-                <el-icon><Delete /></el-icon>
                 删除
               </el-button>
             </el-button-group>
@@ -276,6 +276,7 @@ import {
   Search,
   Edit,
   CircleCheck,
+  CircleCheckFilled,
   Lock,
   Delete,
   User,
@@ -688,5 +689,21 @@ fetchUsers()
   font-size: 28px;
   color: #8c939d;
   background-color: #f5f7fa;
+}
+
+.action-buttons .el-button {
+  min-width: 60px;
+  padding-left: 8px;
+  padding-right: 8px;
+  font-size: 12px;
+}
+
+.action-buttons .el-button span {
+  display: inline;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
 }
 </style>
