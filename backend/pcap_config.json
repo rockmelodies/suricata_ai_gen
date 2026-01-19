@@ -5,5 +5,5 @@
   "suricata_rules_dir": "/var/lib/suricata/rules",
   "suricata_config": "/etc/suricata/suricata.yaml",
   "suricata_log_dir": "/var/log/suricata",
-  "pcap_dir": "/home/kali/pcap_check"
+  "pcap_dir": "uploads"
 }
