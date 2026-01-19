@@ -540,7 +540,7 @@ def check_suricata():
         }
         
         # Check if suricata is available
-        suricata_cmd = shutil.which('suricata') or shutil.which('suricata.exe')
+        suricata_cmd = shutil.which('suricata')
         
         if suricata_cmd:
             result["suricata_available"] = True
@@ -558,12 +558,9 @@ def check_suricata():
                 result["message"] += f", 但无法获取版本信息: {str(e)}"
         else:
             result["message"] = "未找到Suricata命令"
-            if platform.system() == "Windows":
-                result["recommendation"] = "请从 https://github.com/OISF/suricata/releases 下载并安装Suricata，或配置SSH连接到Linux/Kali系统进行远程验证"
-            else:
-                result["recommendation"] = "请安装Suricata (Ubuntu/Debian: sudo apt-get install suricata)"
+            result["recommendation"] = "请安装Suricata (Ubuntu/Debian: sudo apt-get install suricata)"
             
-            # Even if suricata not found, let's check if we have SSH config for remote validation
+            # Check if we have SSH config for remote validation
             ssh_host = config_manager.get_config('ssh_host')
             ssh_user = config_manager.get_config('ssh_user')
             if ssh_host and ssh_user:
@@ -576,9 +573,6 @@ def check_suricata():
             "/etc/suricata/suricata.yaml",
             "/usr/local/etc/suricata/suricata.yaml",
             "/etc/default/suricata",
-            "C:\\Program Files\\Suricata\\suricata.yaml",
-            "C:\\suricata\\suricata.yaml",
-            "C:\\Program Files (x86)\\Suricata\\suricata.yaml",
             # Also check configured path from config manager
             config_manager.get_config('suricata_config') or os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
         ]

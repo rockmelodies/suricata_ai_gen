@@ -798,11 +798,24 @@ AI_MODEL=360gpt-pro
 # Database Configuration
 DB_PATH=backend/suricata_rules.db
 
-# Suricata Configuration (Linux)
+# Suricata Configuration (Kali Linux)
 SURICATA_RULES_DIR=/var/lib/suricata/rules
 SURICATA_CONFIG=/etc/suricata/suricata.yaml
 SURICATA_LOG_DIR=/var/log/suricata
 PCAP_DIR=/home/kali/pcap_check
+
+# SSH远程验证配置
+SSH_HOST=
+SSH_USER=kali
+SSH_KEY=
+```
+
+**说明**：
+- `LLM_API_KEY`：替换为您自己的API密钥
+- `PCAP_DIR`：PCAP文件存放目录
+- `UPLOAD_DIR`：上传文件目录
+- `SURICATA_*`：Suricata配置路径（Kali Linux标准路径）
+- `SSH_*`：SSH连接配置（用于远程验证）
 ```
 
 #### 3. 启动后端服务
@@ -1468,8 +1481,7 @@ PCAP_DIR=/home/kali/pcap_check
 UPLOAD_DIR=uploads
 CONFIG_FILE_PATH=pcap_config.json
 
-# SSH配置 (Windows连接Kali VM)
-SSH_ENABLED=false
+# SSH远程验证配置
 SSH_HOST=
 SSH_USER=kali
 SSH_KEY=
@@ -1638,14 +1650,12 @@ chmod +x start_all.sh
 
 ```bash
 # 在 .env 文件中添加SSH配置
-SSH_ENABLED=true
 SSH_HOST=your_kali_vm_ip
 SSH_USER=kali
 SSH_KEY=/path/to/ssh/private/key
 ```
 
 **配置说明：**
-- `SSH_ENABLED`: 启用SSH远程验证
 - `SSH_HOST`: Kali Linux或安装了Suricata的机器IP
 - `SSH_USER`: SSH用户名
 - `SSH_KEY`: SSH私钥路径（可选，如果使用密码认证则不需要）

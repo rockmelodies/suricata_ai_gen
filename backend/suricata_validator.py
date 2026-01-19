@@ -130,24 +130,28 @@ class SuricataValidator:
                 }
                 return result
             
-            # Normalize log directory path
-            normalized_log_dir = self.log_dir.replace('\\', '/')
-            if not os.path.exists(self.log_dir):
-                result["error"] = f"Suricata日志目录不存在: {self.log_dir}"
-                result["engine_status"] = "log_dir_missing"
-                result["execution_details"] = {
-                    "log_dir": normalized_log_dir,
-                    "suricata_available": True,
-                    "config_exists": True,
-                    "log_dir_exists": False
-                }
-                return result
+            # Only check log directory if we're not using the default config
+            # since default config doesn't need explicit -l flag
+            if self.suricata_config != '/etc/suricata/suricata.yaml':
+                # Normalize log directory path
+                normalized_log_dir = self.log_dir.replace('\\', '/')
+                if not os.path.exists(self.log_dir):
+                    result["error"] = f"Suricata日志目录不存在: {self.log_dir}"
+                    result["engine_status"] = "log_dir_missing"
+                    result["execution_details"] = {
+                        "log_dir": normalized_log_dir,
+                        "suricata_available": True,
+                        "config_exists": True,
+                        "log_dir_exists": False
+                    }
+                    return result
             
             # Run Suricata validation
             result["engine_status"] = "executing"
             result["execution_details"] = {
                 "suricata_available": True,
                 "config_file": self.suricata_config,
+                "using_default_config": self.suricata_config == '/etc/suricata/suricata.yaml',
                 "log_dir": self.log_dir,
                 "pcap_path": pcap_path,
                 "rule_file": rule_file
@@ -164,12 +168,24 @@ class SuricataValidator:
                 result["execution_details"]["current_pcap"] = pcap
                 # Convert to absolute path and normalize path separators for cross-platform compatibility
                 abs_pcap_path = os.path.abspath(pcap).replace('\\', '/')
-                cmd = suricata_cmd + [
-                    '-c', f'"{self.suricata_config}"',
-                    '-k', 'none',
-                    '-r', abs_pcap_path,
-                    '-l', f'"{self.log_dir}"'
-                ]
+                
+                # Only add -l flag if we're not using the default suricata.yaml config
+                # since the default config already specifies the log directory
+                if self.suricata_config == '/etc/suricata/suricata.yaml':
+                    # Use config file's log settings instead of command line -l flag
+                    cmd = suricata_cmd + [
+                        '-c', f'"{self.suricata_config}"',
+                        '-k', 'none',
+                        '-r', abs_pcap_path
+                    ]
+                else:
+                    # For custom configs, use -l flag to specify log directory
+                    cmd = suricata_cmd + [
+                        '-c', f'"{self.suricata_config}"',
+                        '-k', 'none',
+                        '-r', abs_pcap_path,
+                        '-l', f'"{self.log_dir}"'
+                    ]
                 
                 # Store the command for debugging
                 result["execution_details"]["executed_command"] = ' '.join([f'"{arg}"' if ' ' in arg and arg[0] != chr(34) and arg[-1] != chr(34) else arg for arg in cmd])
@@ -329,239 +345,9 @@ class SuricataValidator:
     
     @staticmethod
     def create_validator(rules_dir, suricata_config, log_dir, config_manager=None):
-        """Create appropriate validator instance based on platform"""
-        import platform
-        if platform.system().lower() == 'windows':
-            # Check if suricata is available on Windows
-            import shutil
-            suricata_available = shutil.which('suricata') or shutil.which('suricata.exe')
-            if suricata_available:
-                # Use regular validator if suricata is installed on Windows
-                return SuricataValidator(rules_dir, suricata_config, log_dir)
-            else:
-                # Use Windows validator if no suricata found
-                # Try to get SSH config from config manager
-                ssh_host = ssh_user = ssh_key = None
-                if config_manager:
-                    ssh_host = config_manager.get_config('ssh_host')
-                    ssh_user = config_manager.get_config('ssh_user')
-                    ssh_key = config_manager.get_config('ssh_key')
-                
-                return SuricataValidatorWindows(
-                    rules_dir, suricata_config, log_dir,
-                    ssh_host=ssh_host, ssh_user=ssh_user, ssh_key=ssh_key
-                )
-        else:
-            # Use regular validator on Unix-like systems
-            return SuricataValidator(rules_dir, suricata_config, log_dir)
+        """Create validator instance for Kali Linux (no Windows support)"""
+        # Always return the standard validator (Kali Linux)
+        return SuricataValidator(rules_dir, suricata_config, log_dir)
 
 
-class SuricataValidatorWindows(SuricataValidator):
-    """
-    Windows-compatible validator that simulates Suricata validation
-    This is a fallback when Suricata is not available on Windows
-    """
-    
-    def __init__(self, rules_dir="/var/lib/suricata/rules", suricata_config="/etc/suricata/suricata.yaml", log_dir="/var/log/suricata", ssh_host=None, ssh_user=None, ssh_key=None):
-        """
-        Initialize Windows validator with optional SSH connection to Kali VM
-        
-        Args:
-            rules_dir: Directory for rules
-            suricata_config: Path to suricata config
-            log_dir: Directory for logs
-            ssh_host: SSH host (Kali VM IP)
-            ssh_user: SSH username
-            ssh_key: SSH private key path
-        """
-        super().__init__(rules_dir, suricata_config, log_dir)
-        self.ssh_host = ssh_host
-        self.ssh_user = ssh_user
-        self.ssh_key = ssh_key
-    
-    def validate_rule(self, rule_content: str, pcap_path: str) -> Dict:
-        """
-        Validate rule using SSH to remote Kali system
-        """
-        # First try to get SSH config from config manager if not provided
-        if not self.ssh_host or not self.ssh_user:
-            # Try to get from config manager if available
-            try:
-                from config_manager import config_manager as global_config_manager
-                if global_config_manager:
-                    self.ssh_host = getattr(global_config_manager, 'ssh_host', None) or self.ssh_host
-                    self.ssh_user = getattr(global_config_manager, 'ssh_user', None) or self.ssh_user
-                    self.ssh_key = getattr(global_config_manager, 'ssh_key', None) or self.ssh_key
-            except ImportError:
-                pass  # If config manager not available, continue with existing values
-        
-        if self.ssh_host and self.ssh_user:
-            return self._validate_via_ssh(rule_content, pcap_path)
-        else:
-            return self._mock_validation(rule_content, pcap_path)
-
-    def _validate_via_ssh(self, rule_content: str, pcap_path: str) -> Dict:
-        """Validate via SSH to Kali VM"""
-        result = {
-            "success": False,
-            "matched": False,
-            "alert_count": 0,
-            "details": [],
-            "sid_stats": {},
-            "error": None,
-            "engine_status": "not_started",
-            "execution_details": {}
-        }
-        
-        try:
-            # Check if rule content is valid
-            if not rule_content or not rule_content.strip():
-                result["error"] = "规则内容为空或无效"
-                result["engine_status"] = "invalid_input"
-                return result
-            
-            # Check if SSH config is complete
-            if not self.ssh_host or not self.ssh_user:
-                result["error"] = "SSH配置不完整，请检查SSH主机和用户名设置"
-                result["engine_status"] = "ssh_config_missing"
-                result["execution_details"] = {
-                    "ssh_host": bool(self.ssh_host),
-                    "ssh_user": bool(self.ssh_user),
-                    "ssh_key": bool(self.ssh_key)
-                }
-                return result
-            
-            # Create temporary script
-            # Convert PCAP path to absolute path for cross-platform compatibility and normalize path separators
-            abs_pcap_path = os.path.abspath(pcap_path).replace('\\', '/')
-            script_content = f'''#!/bin/bash
-RULES_DIR="/var/lib/suricata/rules"
-SURICATA_CONFIG="{shlex.quote(self.suricata_config)}"
-PCAP_PATH="{abs_pcap_path}"
-LOG_DIR="{shlex.quote(self.log_dir)}"
-
-# Create rule file
-cat > "$RULES_DIR/vul.rules" << 'EOFR'
-{rule_content}
-EOFR
-
-# Clear logs
-> "$LOG_DIR/fast.log"
-
-# Run suricata
-if [ -d "$PCAP_PATH" ]; then
-    for pcap in "$PCAP_PATH"/*.pcap; do
-        [ -f "$pcap" ] && suricata -c "$SURICATA_CONFIG" -k none -r "$pcap" -l "$LOG_DIR"
-    done
-else
-    suricata -c "$SURICATA_CONFIG" -k none -r "$PCAP_PATH" -l "$LOG_DIR"
-fi
-
-# Output results
-if [ -s "$LOG_DIR/fast.log" ]; then
-    echo "MATCHED:true"
-    echo "COUNT:$(wc -l < "$LOG_DIR/fast.log")"
-    echo "DETAILS:"
-    head -10 "$LOG_DIR/fast.log"
-else
-    echo "MATCHED:false"
-fi
-'''
-            
-            result["engine_status"] = "executing"
-            result["execution_details"] = {
-                "remote_execution": True,
-                "ssh_host": self.ssh_host,
-                "ssh_user": self.ssh_user,
-                "pcap_path": pcap_path
-            }
-            
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False) as f:
-                f.write(script_content)
-                script_file = f.name
-            
-            # Execute via SSH
-            ssh_cmd = [
-                'ssh',
-                '-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=30'
-            ]
-            
-            if self.ssh_key:
-                ssh_cmd.extend(['-i', self.ssh_key])
-            
-            ssh_cmd.extend([
-                f'{self.ssh_user}@{self.ssh_host}',
-                'bash -s'
-            ])
-            
-            result["execution_details"]["executed_command"] = ' '.join([f'"{arg}"' if ' ' in arg and arg[0] != chr(34) and arg[-1] != chr(34) else arg for arg in ssh_cmd])
-            
-            with open(script_file, 'r') as f:
-                proc = subprocess.run(
-                    ssh_cmd,
-                    stdin=f,
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
-            
-            os.unlink(script_file)
-            
-            if proc.returncode != 0:
-                result["error"] = f"SSH执行失败: {proc.stderr}"
-                result["engine_status"] = "ssh_execution_failed"
-                result["execution_details"]["return_code"] = proc.returncode
-                result["execution_details"]["stderr"] = proc.stderr
-                result["execution_details"]["stdout"] = proc.stdout
-                return result
-            
-            # Parse output
-            output = proc.stdout
-            if 'MATCHED:true' in output:
-                result["matched"] = True
-                # Parse count and details
-                lines = output.split('\n')
-                for i, line in enumerate(lines):
-                    if line.startswith('COUNT:'):
-                        try:
-                            result["alert_count"] = int(line.split(':')[1])
-                        except:
-                            result["alert_count"] = 0
-                    elif line.startswith('DETAILS:'):
-                        # Collect details that follow
-                        for j in range(i+1, len(lines)):
-                            detail_line = lines[j].strip()
-                            if detail_line and not detail_line.startswith(('MATCHED:', 'COUNT:')):
-                                result["details"].append(detail_line)
-            
-            result["success"] = True
-            result["engine_status"] = "validation_success"
-            result["execution_details"]["final_status"] = result["engine_status"]
-            
-        except subprocess.TimeoutExpired:
-            result["error"] = "SSH验证超时"
-            result["engine_status"] = "timeout"
-        except Exception as e:
-            result["error"] = str(e)
-            result["engine_status"] = "internal_error"
-        
-        return result
-    
-    def _mock_validation(self, rule_content: str, pcap_path: str) -> Dict:
-        """Mock validation for development/testing"""
-        result = {
-            "success": True,
-            "matched": True,  # Simulated match
-            "alert_count": 1,
-            "details": [
-                f"[Mock] Simulated alert for rule: {rule_content[:50]}..."
-            ],
-            "sid_stats": {
-                "[1:60000001:1]": 1
-            },
-            "error": None,
-            "note": "This is a mock validation result (Suricata not available on Windows)"
-        }
-        
-        return result
+# Removed Windows validator class as per requirement to focus on Kali Linux only

@@ -1,17 +1,9 @@
 {
-  "default_pcap_path": "E:\\toos\\pcap",
+  "default_pcap_path": "/home/kali/pcap_check",
   "upload_dir": "uploads",
-  "uploaded_pcaps": [
-    {
-      "filename": "http_traffic_LG-NAS_rce.pcap",
-      "filepath": "uploads\\http_traffic_LG-NAS_rce.pcap",
-      "size": 1466,
-      "upload_time": 1768372208.0307722
-    }
-  ],
   "config_file_path": "pcap_config.json",
-  "suricata_rules_dir": "D:\\Program Files\\Suricata\\rules",
-  "suricata_config": "D:\\Program Files\\Suricata\\suricata.yaml",
-  "suricata_log_dir": "D:\\Program Files\\Suricata\\log",
-  "pcap_dir": "uploads"
+  "suricata_rules_dir": "/var/lib/suricata/rules",
+  "suricata_config": "/etc/suricata/suricata.yaml",
+  "suricata_log_dir": "/var/log/suricata",
+  "pcap_dir": "/home/kali/pcap_check"
 }
