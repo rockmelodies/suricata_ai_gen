@@ -83,42 +83,42 @@
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column prop="updated_at" label="更新时间" width="180" />
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? 180 : 260" fixed="right">
           <template #default="{ row }">
-            <el-button-group class="action-buttons">
+            <el-button-group class="button-group">
               <el-button
                 type="primary"
                 size="small"
-                :icon="Edit"
                 @click="handleEdit(row)"
               >
-                编辑
+                <el-icon><Edit /></el-icon>
+                <span v-if="!isMobile">编辑</span>
               </el-button>
               <el-button
                 :type="row.status === 'active' ? 'warning' : 'success'"
                 size="small"
-                :icon="row.status === 'active' ? CircleCheck : CircleCheckFilled"
                 :disabled="row.id === userStore.user?.id"
                 @click="handleToggleStatus(row)"
               >
-                {{ row.status === 'active' ? '禁用' : '激活' }}
+                <el-icon><component :is="row.status === 'active' ? 'CircleCheck' : 'CircleCheckFilled'" /></el-icon>
+                <span v-if="!isMobile">{{ row.status === 'active' ? '禁用' : '激活' }}</span>
               </el-button>
               <el-button
                 type="info"
                 size="small"
-                :icon="Lock"
                 @click="handleResetPassword(row)"
               >
-                重置密码
+                <el-icon><Lock /></el-icon>
+                <span v-if="!isMobile">重置密码</span>
               </el-button>
               <el-button
                 type="danger"
                 size="small"
-                :icon="Delete"
                 :disabled="row.id === 1 || row.id === userStore.user?.id"
                 @click="handleDelete(row)"
               >
-                删除
+                <el-icon><Delete /></el-icon>
+                <span v-if="!isMobile">删除</span>
               </el-button>
             </el-button-group>
           </template>
@@ -271,7 +271,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus,
@@ -711,25 +711,36 @@ fetchUsers()
   background-color: #f5f7fa;
 }
 
-.action-buttons .el-button {
-  min-width: 55px;
-  padding: 4px 8px;
-  font-size: 12px;
-  height: 30px;
-}
-
-.action-buttons .el-button span {
-  display: inline;
-}
-
-.action-buttons {
+.button-group {
   display: flex;
-  gap: 2px;
   flex-wrap: nowrap;
+  gap: 2px;
 }
 
-.action-buttons .el-button.is-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.button-group .el-button {
+  margin: 0;
+  min-width: auto;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+@media (max-width: 768px) {
+  .button-group {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .button-group .el-button {
+    flex: 1;
+    min-width: 35px;
+    max-width: 50px;
+    padding-left: 4px;
+    padding-right: 4px;
+    font-size: 12px;
+  }
+  
+  .button-group .el-button span {
+    display: none;
+  }
 }
 </style>
