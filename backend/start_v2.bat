@@ -34,6 +34,6 @@ echo   服务地址: http://localhost:5000/api
 echo ========================================
 echo.
 
-python app_v2.py
+python app_with_auth.py
 
 pause

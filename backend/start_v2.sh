@@ -40,7 +40,7 @@ echo "========================================"
 # Save PID
 PID_FILE="$SCRIPT_DIR/backend_v2.pid"
 
-python app_v2.py &
+python app_with_auth.py &
 BACKEND_PID=$!
 
 echo $BACKEND_PID > "$PID_FILE"

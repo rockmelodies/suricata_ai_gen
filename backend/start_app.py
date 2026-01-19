@@ -90,7 +90,7 @@ def main():
     
     # Import and run the Flask app
     try:
-        from app_v2 import app
+        from app_with_auth import app
         
         print("\n启动 Flask 应用...")
         print("应用将在 http://0.0.0.0:5000 上运行")
