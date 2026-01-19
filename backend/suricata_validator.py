@@ -65,6 +65,7 @@ class SuricataValidator:
             # Create temporary rule file and normalize path separators
             # Use a unique rule filename to avoid conflicts
             unique_rule_filename = f"vul_{uuid.uuid4().hex[:8]}.rules"
+            # Ensure all path separators are forward slashes for Linux compatibility
             rule_file = os.path.join(self.rules_dir, unique_rule_filename).replace('\\', '/')
             
             # Check if rule content is valid
@@ -138,8 +139,8 @@ class SuricataValidator:
             actual_config = None
             for config_path in possible_configs:
                 if os.path.exists(config_path):
-                    # Get absolute path to ensure consistency
-                    actual_config = os.path.abspath(config_path)
+                    # Get absolute path to ensure consistency, and normalize to Linux format
+                    actual_config = os.path.abspath(config_path).replace('\\', '/')
                     break
             
             if actual_config is None:
@@ -194,17 +195,16 @@ class SuricataValidator:
                 # Convert to absolute path and normalize path separators for cross-platform compatibility
                 abs_pcap_path = os.path.abspath(pcap).replace('\\', '/')
                 
-                # Following the stable shell script approach, use -c for config, -S for rules, -l for logs
+                # Follow the stable shell script approach - use only -S for rules, rely on default config and log dir
+                # Don't add extra quotes around arguments to avoid escape issues in Linux
                 cmd = suricata_cmd + [
-                    '-c', f'"{actual_config}"',
                     '-S', rule_file,
                     '-k', 'none',
-                    '-r', abs_pcap_path,
-                    '-l', f'"{self.log_dir}"'
+                    '-r', abs_pcap_path
                 ]
                 
-                # Store the command for debugging
-                result["execution_details"]["executed_command"] = ' '.join([f'"{arg}"' if ' ' in arg and arg[0] != chr(34) and arg[-1] != chr(34) else arg for arg in cmd])
+                # Store the command for debugging - simplified for Linux environment
+                result["execution_details"]["executed_command"] = ' '.join(cmd)
                 
                 print(f"正在测试: {abs_pcap_path}")
                 proc = subprocess.run(
