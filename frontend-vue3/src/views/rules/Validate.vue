@@ -318,7 +318,7 @@ const rulesList = ref<any[]>([])
 const labelPosition = ref<'left' | 'top'>('left')
 
 // PCAP管理相关
-const pcapConfig = ref({ default_pcap_path: '/home/kali/pcap_check' })
+const pcapConfig = ref({ default_pcap_path: '' })
 const uploadedPCAPs = ref<any[]>([])
 const showPCAPUploadDialog = ref(false)
 const showPCAPListDialog = ref(false)
@@ -328,7 +328,7 @@ const loadingPCAPs = ref(false)
 
 const form = reactive<ValidationForm>({
   rule_content: '',
-  pcap_path: '/home/kali/pcap_check'
+  pcap_path: '' // 初始化为空，稍后从API获取
 })
 
 // 响应式处理

@@ -363,7 +363,7 @@ const validating = ref(false)
 const showValidateDialog = ref(false)
 const validateForm = reactive({
   rule_content: '',
-  pcap_path: '/home/kali/pcap_check',
+  pcap_path: '', // 初始化为空，稍后从API获取
   rule_id: undefined as number | undefined
 })
 const validationResult = ref<any>(null)

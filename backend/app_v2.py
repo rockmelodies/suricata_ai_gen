@@ -164,7 +164,9 @@ def validate_rule():
         data = request.json
         rule_content = data.get('rule_content', '')
         rule_id = data.get('rule_id')
-        pcap_path = data.get('pcap_path', '/home/kali/pcap_check')
+        # 从环境变量获取默认PCAP路径，如果环境变量未设置，则使用旧的默认路径
+        default_pcap_path = os.getenv('PCAP_UPLOAD_DIR', os.path.join(os.path.dirname(__file__), 'uploads'))
+        pcap_path = data.get('pcap_path', default_pcap_path)
         
         if not rule_content:
             return jsonify({"error": "缺少规则内容"}), 400

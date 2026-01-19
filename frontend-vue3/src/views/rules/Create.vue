@@ -337,6 +337,8 @@ const handleResize = () => {
 onMounted(() => {
   handleResize()
   window.addEventListener('resize', handleResize)
+  // 页面加载时获取PCAP配置
+  refreshPCAPConfig()
 })
 
 onUnmounted(() => {
@@ -372,7 +374,7 @@ const form = reactive<RuleGenerateForm>({
 
 const validateForm = reactive<ValidationForm>({
   rule_content: '',
-  pcap_path: '/home/kali/pcap_check',
+  pcap_path: '', // 初始化为空，稍后从API获取
   rule_id: undefined
 })
 

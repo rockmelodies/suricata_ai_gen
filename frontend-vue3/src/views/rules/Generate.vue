@@ -154,7 +154,7 @@ import { ElMessage } from 'element-plus'
 import { MagicStick, DocumentCopy, Check } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { RuleGenerateForm } from '@/types'
-import { generateRule } from '@/api/rules'
+import { generateRule, getPCAPConfig } from '@/api/rules'
 import { validateRule } from '@/api/rules'
 import { useRouter } from 'vue-router'
 
@@ -165,7 +165,7 @@ const validating = ref(false)
 const generatedRule = ref('')
 const ruleId = ref<number>()
 const showValidateDialog = ref(false)
-const pcapPath = ref('/home/kali/pcap_check')
+const pcapPath = ref('') // 初始化为空，稍后从API获取
 const labelPosition = ref<'left' | 'top'>('left')
 
 const form = reactive<RuleGenerateForm>({
@@ -184,9 +184,23 @@ const handleResize = () => {
   }
 }
 
+// 加载PCAP配置
+const loadPCAPConfig = async () => {
+  try {
+    const res: any = await getPCAPConfig()
+    if (res.success) {
+      pcapPath.value = res.config.default_pcap_path
+    }
+  } catch (error) {
+    console.error('获取PCAP配置失败:', error)
+  }
+}
+
 onMounted(() => {
   handleResize()
   window.addEventListener('resize', handleResize)
+  // 页面加载时获取PCAP配置
+  loadPCAPConfig()
 })
 
 onUnmounted(() => {
