@@ -98,6 +98,7 @@
                 :type="row.status === 'active' ? 'warning' : 'success'"
                 size="small"
                 :icon="row.status === 'active' ? CircleCheck : CircleCheckFilled"
+                :disabled="row.id === userStore.user?.id"
                 @click="handleToggleStatus(row)"
               >
                 {{ row.status === 'active' ? '禁用' : '激活' }}
@@ -114,6 +115,7 @@
                 type="danger"
                 size="small"
                 :icon="Delete"
+                :disabled="row.id === 1 || row.id === userStore.user?.id"
                 @click="handleDelete(row)"
               >
                 删除
@@ -457,6 +459,12 @@ const handleEdit = (row: any) => {
 // 激活/禁用用户
 const handleToggleStatus = async (row: any) => {
   try {
+    // 防止禁用自己的账户
+    if (row.id === userStore.user?.id) {
+      ElMessage.error('不能禁用当前登录的用户')
+      return
+    }
+    
     await ElMessageBox.confirm(
       `确定要${row.status === 'active' ? '禁用' : '激活'}用户 "${row.username}" 吗？`,
       '提示',
@@ -488,6 +496,18 @@ const handleToggleStatus = async (row: any) => {
 // 删除用户
 const handleDelete = async (row: any) => {
   try {
+    // 防止删除自己（当前登录用户）
+    if (row.id === userStore.user?.id) {
+      ElMessage.error('不能删除当前登录的用户')
+      return
+    }
+    
+    // 防止删除最高管理员（ID为1的用户）
+    if (row.id === 1) {
+      ElMessage.error('不能删除超级管理员用户')
+      return
+    }
+    
     await ElMessageBox.confirm(
       `确定要删除用户 "${row.username}" 吗？此操作不可恢复！`,
       '警告',
@@ -692,10 +712,10 @@ fetchUsers()
 }
 
 .action-buttons .el-button {
-  min-width: 60px;
-  padding-left: 8px;
-  padding-right: 8px;
+  min-width: 55px;
+  padding: 4px 8px;
   font-size: 12px;
+  height: 30px;
 }
 
 .action-buttons .el-button span {
@@ -704,6 +724,12 @@ fetchUsers()
 
 .action-buttons {
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  flex-wrap: nowrap;
+}
+
+.action-buttons .el-button.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
