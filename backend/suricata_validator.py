@@ -16,13 +16,18 @@ from typing import Dict, List
 
 class SuricataValidator:
     def __init__(self, 
-                 rules_dir="/var/lib/suricata/rules",
-                 suricata_config="/etc/suricata/suricata.yaml",
-                 log_dir="/var/log/suricata"):
+                 rules_dir=None,
+                 suricata_config=None,
+                 log_dir=None):
+        # Read configuration from environment variables if available, fallback to defaults
+        env_rules_dir = os.getenv('SURICATA_RULES_DIR', rules_dir or '/var/lib/suricata/rules')
+        env_suricata_config = os.getenv('SURICATA_CONFIG_PATH', suricata_config or '/etc/suricata/suricata.yaml')
+        env_log_dir = os.getenv('SURICATA_LOG_DIR', log_dir or '/var/log/suricata')
+        
         # Normalize path separators for cross-platform compatibility
-        self.rules_dir = rules_dir.replace('\\', '/')
-        self.suricata_config = suricata_config.replace('\\', '/')
-        self.log_dir = log_dir.replace('\\', '/')
+        self.rules_dir = env_rules_dir.replace('\\', '/')
+        self.suricata_config = env_suricata_config.replace('\\', '/')
+        self.log_dir = env_log_dir.replace('\\', '/')
         self.backup_suffix = f".bak.{datetime.now().strftime('%Y%m%d%H%M%S')}"
         self.is_windows = platform.system().lower() == 'windows'
     
@@ -195,9 +200,10 @@ class SuricataValidator:
                 # Convert to absolute path and normalize path separators for cross-platform compatibility
                 abs_pcap_path = os.path.abspath(pcap).replace('\\', '/')
                 
-                # Follow the stable shell script approach - use only -S for rules, rely on default config and log dir
-                # Don't add extra quotes around arguments to avoid escape issues in Linux
+                # Use -c flag with config and -S for rules, similar to the working shell script
+                # Make sure to properly quote paths that may contain spaces
                 cmd = suricata_cmd + [
+                    '-c', actual_config,
                     '-S', rule_file,
                     '-k', 'none',
                     '-r', abs_pcap_path
@@ -370,7 +376,7 @@ class SuricataValidator:
         return result
     
     @staticmethod
-    def create_validator(rules_dir, suricata_config, log_dir, config_manager=None):
+    def create_validator(rules_dir=None, suricata_config=None, log_dir=None):
         """Create validator instance for Kali Linux (no Windows support)"""
         # Always return the standard validator (Kali Linux)
         return SuricataValidator(rules_dir, suricata_config, log_dir)

@@ -39,55 +39,8 @@ config_manager = ConfigManager(db)
 config_manager_module = __import__('config_manager')
 config_manager_module.config_manager = config_manager
 
-# Migration: Import existing config from JSON file, with option to override existing values
-import os
-import json
-json_config_path = "pcap_config.json"
-try:
-    if os.path.exists(json_config_path):
-        with open(json_config_path, 'r', encoding='utf-8') as f:
-            # Use a more robust approach to handle potential escape sequence issues in JSON
-            try:
-                # Try direct JSON parsing first
-                import json
-                f.seek(0)  # Reset file pointer
-                json_config = json.load(f)
-            except json.JSONDecodeError:
-                # If direct parsing fails, try to fix common path-related escape issues
-                f.seek(0)
-                raw_content = f.read()
-                # Simple approach: replace commonly problematic path strings
-                import re
-                
-                # Replace unescaped backslashes in path-like strings
-                # This looks for patterns like "key": "C:\path\to\somewhere" and properly escapes them
-                def fix_unescaped_backslashes(text):
-                    # Find quoted strings and fix backslashes within them
-                    def quote_replacer(match):
-                        inner = match.group(1)
-                        # Replace unescaped backslashes that are likely part of file paths
-                        # We look for patterns like C:, D:, etc. or common path structures
-                        fixed = re.sub(r'(?<!\\)\\(?!\\|")', r'\\\\', inner)
-                        return '"' + fixed + '"'
-                    
-                    return re.sub(r'"((?:\\.|[^"\\])*)"', quote_replacer, text)
-                
-                fixed_content = fix_unescaped_backslashes(raw_content)
-                json_config = json.loads(fixed_content)
-        # Migrate all config values to database, overriding existing ones if they differ
-        for key, value in json_config.items():
-            existing_value = config_manager.db.get_config(key)
-            if existing_value is None or existing_value == f'C:\\Program Files\\Suricata\\{key.split("_")[-1]}':  # Check if it's still using default C: path
-                config_manager.set_config(key, value)
-                print(f"迁移配置项: {key} = {value}")
-            elif existing_value != str(value):  # If JSON value differs from database value
-                # Ask user preference, but for now we'll prioritize JSON as it might be more recently updated
-                config_manager.set_config(key, value)
-                print(f"更新配置项: {key} = {value}")
-except Exception as e:
-    print(f"警告: 配置迁移过程中出错: {e}")
-    import traceback
-    traceback.print_exc()
+# 现在完全依赖环境变量进行配置，不再从JSON文件迁移配置
+# 所有配置应通过 .env 文件进行设置
 
 # Initialize pcap manager DB
 from pcap_manager_db import PCAPManagerDB
@@ -216,21 +169,17 @@ def validate_rule():
         if not rule_content:
             return jsonify({"error": "缺少规则内容"}), 400
         
-        # 使用最新配置创建临时SuricataValidator实例
-        if config_manager is None:
-            return jsonify({"error": "配置管理器未初始化"}), 500
-        
+        # 使用环境变量配置创建临时SuricataValidator实例
         from suricata_validator import SuricataValidator
-        # 从配置管理器获取配置，如果不存在则从环境变量获取默认值
-        rules_dir = config_manager.get_config('suricata_rules_dir') or os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
-        suricata_config = config_manager.get_config('suricata_config') or os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
-        log_dir = config_manager.get_config('suricata_log_dir') or os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
+        # 优先从环境变量获取配置，这是主要的配置源
+        rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
+        suricata_config = os.getenv('SURICATA_CONFIG_PATH', '/etc/suricata/suricata.yaml')
+        log_dir = os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
         
         current_suricata_validator = SuricataValidator.create_validator(
             rules_dir=rules_dir,
             suricata_config=suricata_config,
-            log_dir=log_dir,
-            config_manager=config_manager
+            log_dir=log_dir
         )
         
         # Validate the rule
@@ -426,21 +375,17 @@ def validate_with_uploaded_pcap():
         if not os.path.exists(pcap_dir):
             return jsonify({"error": "PCAP目录不存在"}), 404
         
-        # 使用最新配置创建临时SuricataValidator实例
-        if config_manager is None:
-            return jsonify({"error": "配置管理器未初始化"}), 500
-        
+        # 使用环境变量配置创建临时SuricataValidator实例
         from suricata_validator import SuricataValidator
-        # 从配置管理器获取配置，如果不存在则从环境变量获取默认值
-        rules_dir = config_manager.get_config('suricata_rules_dir') or os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
-        suricata_config = config_manager.get_config('suricata_config') or os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
-        log_dir = config_manager.get_config('suricata_log_dir') or os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
+        # 优先从环境变量获取配置，这是主要的配置源
+        rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
+        suricata_config = os.getenv('SURICATA_CONFIG_PATH', '/etc/suricata/suricata.yaml')
+        log_dir = os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
         
         current_suricata_validator = SuricataValidator.create_validator(
             rules_dir=rules_dir,
             suricata_config=suricata_config,
-            log_dir=log_dir,
-            config_manager=config_manager
+            log_dir=log_dir
         )
         
         # Validate the rule
@@ -573,8 +518,8 @@ def check_suricata():
             "/etc/suricata/suricata.yaml",
             "/usr/local/etc/suricata/suricata.yaml",
             "/etc/default/suricata",
-            # Also check configured path from config manager
-            config_manager.get_config('suricata_config') or os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
+            # Also check configured path from environment variable
+            os.getenv('SURICATA_CONFIG_PATH', '/etc/suricata/suricata.yaml')
         ]
         
         for config_path in possible_configs:
@@ -585,8 +530,8 @@ def check_suricata():
                 break
         
         # Check if configured directories exist
-        rules_dir = config_manager.get_config('suricata_rules_dir') or os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
-        log_dir = config_manager.get_config('suricata_log_dir') or os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
+        rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
+        log_dir = os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
         
         result["rules_dir_exists"] = os.path.exists(rules_dir)
         result["log_dir_exists"] = os.path.exists(log_dir)
