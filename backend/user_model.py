@@ -31,6 +31,7 @@ class UserModel:
                 email TEXT UNIQUE,
                 role TEXT DEFAULT 'user',
                 is_active INTEGER DEFAULT 1,
+                avatar TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )

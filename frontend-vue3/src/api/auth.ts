@@ -35,3 +35,13 @@ export const updateUser = (id: number, data: any) => {
 export const deleteUser = (id: number) => {
   return request.delete(`/users/${id}`)
 }
+
+// 创建用户
+export const createUser = (data: any) => {
+  return request.post('/users', data)
+}
+
+// 重置用户密码
+export const resetUserPassword = (id: number, data: any) => {
+  return request.put(`/users/${id}/password`, data)
+}
