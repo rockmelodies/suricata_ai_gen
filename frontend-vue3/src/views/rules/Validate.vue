@@ -578,6 +578,7 @@ const closePCAPUploadDialog = () => {
 <style scoped>
 .validate-container {
   max-width: 1200px;
+  padding: 20px;
 }
 
 .form-tip {

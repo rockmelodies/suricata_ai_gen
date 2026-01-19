@@ -285,6 +285,7 @@ const handleValidate = async () => {
 <style scoped>
 .generate-container {
   max-width: 1200px;
+  padding: 20px;
 }
 
 .card-header {

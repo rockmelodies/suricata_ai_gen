@@ -48,7 +48,7 @@
     <el-container>
       <el-header class="header">
         <div class="header-left">
-          <el-button @click="toggleSidebar" size="large" :icon="collapsed ? Expand : Fold" circle plain />
+          <el-button @click="toggleSidebar" size="default" :icon="collapsed ? Expand : Fold" link />
           <span class="page-title">{{ pageTitle }}</span>
         </div>
         <div class="header-right">
