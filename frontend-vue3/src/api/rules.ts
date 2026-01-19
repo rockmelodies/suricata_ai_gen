@@ -67,3 +67,8 @@ export const deletePCAP = (filename: string) => {
 export const validateWithUploadedPCAP = (data: { rule_content: string; rule_id?: number; pcap_filename: string }) => {
   return request.post('/pcap/validate', data)
 }
+
+// 检查Suricata引擎状态
+export const checkSuricataEngine = () => {
+  return request.get('/suricata/check')
+}

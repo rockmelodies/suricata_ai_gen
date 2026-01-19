@@ -7,410 +7,201 @@
         </div>
       </template>
 
-      <el-form
-        ref="formRef"
-        :model="config"
-        :rules="rules"
-        label-width="auto"
-        size="large"
-        :label-position="labelPosition"
-      >
-        <el-form-item label="默认PCAP路径" prop="default_pcap_path">
-          <el-input
-            v-model="config.default_pcap_path"
-            placeholder="请输入PCAP文件所在目录路径"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><FolderOpened /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            默认用于规则验证的PCAP文件目录路径
-          </div>
-        </el-form-item>
+      <div class="config-section">
+        <h3>🔒 环境变量配置说明</h3>
+        <p>系统现在完全通过环境变量进行配置，所有敏感配置都应在 <code>.env</code> 文件中设置。</p>
+        
+        <el-alert
+          title="重要提醒"
+          type="info"
+          description="所有Suricata相关配置现在都通过环境变量管理，无需在页面上进行配置。修改配置需要重启后端服务才能生效。"
+          show-icon
+          :closable="false"
+          style="margin: 16px 0;"
+        />
 
-        <el-form-item label="上传目录" prop="upload_dir">
-          <el-input
-            v-model="config.upload_dir"
-            placeholder="请输入上传文件保存目录"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><Upload /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            上传的PCAP文件保存目录，默认为 'uploads'
-          </div>
-        </el-form-item>
-
-        <el-divider />
-
-        <h3>🔧 Suricata配置</h3>
-
-        <el-form-item label="规则目录" prop="suricata_rules_dir">
-          <el-input
-            v-model="config.suricata_rules_dir"
-            placeholder="请输入Suricata规则目录路径"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><Folder /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            Suricata规则文件存放目录
-          </div>
-        </el-form-item>
-
-        <el-form-item label="配置文件" prop="suricata_config">
-          <el-input
-            v-model="config.suricata_config"
-            placeholder="请输入Suricata配置文件路径"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><Document /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            Suricata配置文件路径
-          </div>
-        </el-form-item>
-
-        <el-form-item label="日志目录" prop="suricata_log_dir">
-          <el-input
-            v-model="config.suricata_log_dir"
-            placeholder="请输入Suricata日志目录路径"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><FolderOpened /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            Suricata日志文件存放目录
-          </div>
-        </el-form-item>
-
-        <el-form-item label="PCAP目录" prop="pcap_dir">
-          <el-input
-            v-model="config.pcap_dir"
-            placeholder="请输入PCAP文件目录路径"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><Folder /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            PCAP文件存放目录
-          </div>
-        </el-form-item>
-
-        <el-divider />
-
-        <h3>🔗 SSH远程验证配置</h3>
-
-        <el-form-item label="SSH主机" prop="ssh_host">
-          <el-input
-            v-model="config.ssh_host"
-            placeholder="请输入SSH主机地址，如：192.168.1.100"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><Connection /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            用于远程验证的SSH主机地址
-          </div>
-        </el-form-item>
-
-        <el-form-item label="SSH用户" prop="ssh_user">
-          <el-input
-            v-model="config.ssh_user"
-            placeholder="请输入SSH用户名，如：kali"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><User /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            用于远程验证的SSH用户名
-          </div>
-        </el-form-item>
-
-        <el-form-item label="SSH密钥路径" prop="ssh_key">
-          <el-input
-            v-model="config.ssh_key"
-            placeholder="请输入SSH私钥文件路径（可选）"
-            @blur="saveConfig"
-          >
-            <template #prepend>
-              <el-icon><Lock /></el-icon>
-            </template>
-            <template #append>
-              <el-button type="primary" @click="saveConfig" plain>保存</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">
-            <el-icon><InfoFilled /></el-icon>
-            SSH私钥文件路径，留空则使用密码认证
-          </div>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button
-            type="primary"
-            @click="saveConfig"
-          >
-            <el-icon><Check /></el-icon>
-            保存所有配置
-          </el-button>
-          <el-button @click="resetConfig">重置</el-button>
-        </el-form-item>
-      </el-form>
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="环境变量文件">
+            <el-tag type="info">.env</el-tag>
+            <div class="desc-detail">
+              位于后端项目根目录，包含所有环境变量配置
+            </div>
+          </el-descriptions-item>
+          
+          <el-descriptions-item label="Suricata规则目录">
+            <el-tag type="success">SURICATA_RULES_DIR</el-tag>
+            <div class="desc-detail">
+              默认值: /var/lib/suricata/rules
+            </div>
+          </el-descriptions-item>
+          
+          <el-descriptions-item label="Suricata配置文件">
+            <el-tag type="success">SURICATA_CONFIG_PATH</el-tag>
+            <div class="desc-detail">
+              默认值: /etc/suricata/suricata.yaml
+            </div>
+          </el-descriptions-item>
+          
+          <el-descriptions-item label="Suricata日志目录">
+            <el-tag type="success">SURICATA_LOG_DIR</el-tag>
+            <div class="desc-detail">
+              默认值: /var/log/suricata
+            </div>
+          </el-descriptions-item>
+          
+          <el-descriptions-item label="AI API密钥">
+            <el-tag type="warning">AI_API_KEY</el-tag>
+            <div class="desc-detail">
+              用于AI模型的API密钥
+            </div>
+          </el-descriptions-item>
+          
+          <el-descriptions-item label="AI模型">
+            <el-tag type="warning">AI_MODEL</el-tag>
+            <div class="desc-detail">
+              默认值: 360gpt-pro
+            </div>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
 
       <el-divider />
 
-      <div class="config-info">
-        <h3>📋 配置信息</h3>
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="当前默认PCAP路径">
-            {{ config.default_pcap_path }}
-          </el-descriptions-item>
-          <el-descriptions-item label="上传目录">
-            {{ config.upload_dir }}
-          </el-descriptions-item>
-          <el-descriptions-item label="配置文件路径">
-            {{ config.config_file_path }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Suricata规则目录">
-            {{ config.suricata_rules_dir }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Suricata配置文件">
-            {{ config.suricata_config }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Suricata日志目录">
-            {{ config.suricata_log_dir }}
-          </el-descriptions-item>
-          <el-descriptions-item label="PCAP目录">
-            {{ config.pcap_dir }}
-          </el-descriptions-item>
-          <el-descriptions-item label="SSH主机">
-            {{ config.ssh_host || '未配置' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="SSH用户">
-            {{ config.ssh_user || '未配置' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="SSH密钥路径">
-            {{ config.ssh_key || '未配置' }}
-          </el-descriptions-item>
-        </el-descriptions>
+      <div class="config-section">
+        <h3>📝 配置步骤</h3>
+        <el-steps :active="4" finish-status="success" simple style="margin: 20px 0;">
+          <el-step title="创建文件" description="在后端根目录创建 .env 文件" />
+          <el-step title="添加变量" description="添加所需的环境变量" />
+          <el-step title="填写值" description="填入正确的配置值" />
+          <el-step title="重启服务" description="重启后端服务使配置生效" />
+        </el-steps>
+
+        <div class="sample-config">
+          <h4>示例 .env 配置：</h4>
+          <pre>{{ sampleEnvConfig }}</pre>
+        </div>
+      </div>
+
+      <el-divider />
+
+      <div class="config-section">
+        <h3>🔄 服务状态</h3>
+        <el-button type="primary" @click="checkSuricataStatus" :loading="checking">
+          检查Suricata引擎状态
+        </el-button>
+        
+        <div v-if="suricataStatus" class="status-result" style="margin-top: 20px;">
+          <el-card shadow="never" :class="suricataStatus.status === 'ready' ? 'success-card' : suricataStatus.status === 'partial' ? 'warning-card' : 'error-card'">
+            <div class="status-header">
+              <el-tag 
+                :type="suricataStatus.status === 'ready' ? 'success' : suricataStatus.status === 'partial' ? 'warning' : 'danger'"
+                size="large"
+              >
+                {{ getStatusText(suricataStatus.status) }}
+              </el-tag>
+            </div>
+            <div class="status-details">
+              <p><strong>操作系统:</strong> {{ suricataStatus.os || '未知' }}</p>
+              <p><strong>Suricata可用:</strong> 
+                <el-tag :type="suricataStatus.suricata_available ? 'success' : 'danger'">
+                  {{ suricataStatus.suricata_available ? '是' : '否' }}
+                </el-tag>
+              </p>
+              <p v-if="suricataStatus.version"><strong>版本:</strong> {{ suricataStatus.version }}</p>
+              <p><strong>配置文件找到:</strong> 
+                <el-tag :type="suricataStatus.config_found ? 'success' : 'danger'">
+                  {{ suricataStatus.config_found ? '是' : '否' }}
+                </el-tag>
+              </p>
+              <p v-if="suricataStatus.config_path"><strong>配置路径:</strong> {{ suricataStatus.config_path }}</p>
+              <p><strong>规则目录存在:</strong> 
+                <el-tag :type="suricataStatus.rules_dir_exists ? 'success' : 'danger'">
+                  {{ suricataStatus.rules_dir_exists ? '是' : '否' }}
+                </el-tag>
+              </p>
+              <p><strong>日志目录存在:</strong> 
+                <el-tag :type="suricataStatus.log_dir_exists ? 'success' : 'danger'">
+                  {{ suricataStatus.log_dir_exists ? '是' : '否' }}
+                </el-tag>
+              </p>
+              <p v-if="suricataStatus.message"><strong>消息:</strong> {{ suricataStatus.message }}</p>
+              <p v-if="suricataStatus.recommendation"><strong>建议:</strong> {{ suricataStatus.recommendation }}</p>
+            </div>
+          </el-card>
+        </div>
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Check,
-  FolderOpened,
-  InfoFilled,
-  Upload,
-  Folder,
-  Document,
-  Connection,
-  User,
-  Lock
-} from '@element-plus/icons-vue'
-import type { FormInstance, FormRules } from 'element-plus'
-import { getPCAPConfig, setPCAPConfig } from '@/api/rules'
+import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { InfoFilled, Check } from '@element-plus/icons-vue'
+import { checkSuricataEngine } from '@/api/rules'
 
-const formRef = ref<FormInstance>()
-const labelPosition = ref<'left' | 'top'>('left')
+// 示例环境变量配置
+const sampleEnvConfig = `# AI配置
+AI_API_KEY=your_api_key_here
+AI_MODEL=360gpt-pro
 
-// 配置数据
-const config = reactive({
-  default_pcap_path: '/home/kali/pcap_check',
-  upload_dir: 'uploads',
-  config_file_path: 'pcap_config.json',
-  suricata_rules_dir: 'C:\\Program Files\\Suricata\\rules',
-  suricata_config: 'C:\\Program Files\\Suricata\\suricata.yaml',
-  suricata_log_dir: 'C:\\Program Files\\Suricata\\log',
-  pcap_dir: 'C:\\pcap_check',
-  ssh_host: '',
-  ssh_user: '',
-  ssh_key: ''
-})
+# Suricata配置
+SURICATA_RULES_DIR=/var/lib/suricata/rules
+SURICATA_CONFIG_PATH=/etc/suricata/suricata.yaml
+SURICATA_LOG_DIR=/var/log/suricata
 
-// 表单验证规则
-const rules: FormRules = {
-  default_pcap_path: [
-    { required: true, message: '请输入默认PCAP路径', trigger: 'blur' }
-  ],
-  upload_dir: [
-    { required: true, message: '请输入上传目录', trigger: 'blur' }
-  ],
-  suricata_rules_dir: [
-    { required: true, message: '请输入Suricata规则目录', trigger: 'blur' }
-  ],
-  suricata_config: [
-    { required: true, message: '请输入Suricata配置文件路径', trigger: 'blur' }
-  ],
-  suricata_log_dir: [
-    { required: true, message: '请输入Suricata日志目录', trigger: 'blur' }
-  ],
-  pcap_dir: [
-    { required: true, message: '请输入PCAP目录', trigger: 'blur' }
-  ],
-  ssh_host: [
-    { message: '请输入SSH主机地址', trigger: 'blur' }
-  ],
-  ssh_user: [
-    { message: '请输入SSH用户名', trigger: 'blur' }
-  ]
+# 数据库配置
+DB_PATH=./suricata_rules.db`;
+
+// 状态检查相关
+const checking = ref(false)
+const suricataStatus = ref(null)
+
+// 检查Suricata状态
+const checkSuricataStatus = async () => {
+  checking.value = true
+  try {
+    const res: any = await checkSuricataEngine()
+    suricataStatus.value = res
+    if (res.status === 'ready') {
+      ElMessage.success('Suricata引擎准备就绪')
+    } else if (res.status === 'partial') {
+      ElMessage.warning('Suricata引擎部分可用')
+    } else {
+      ElMessage.error(res.message || 'Suricata引擎不可用')
+    }
+  } catch (error) {
+    console.error('检查Suricata状态失败:', error)
+    ElMessage.error('检查状态失败')
+  } finally {
+    checking.value = false
+  }
+}
+
+// 获取状态文本
+const getStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'ready': '引擎就绪',
+    'partial': '部分可用',
+    'unavailable': '不可用'
+  }
+  return statusMap[status] || status
 }
 
 // 响应式处理
 const handleResize = () => {
-  if (window.innerWidth < 768) {
-    labelPosition.value = 'top'
-  } else {
-    labelPosition.value = 'left'
-  }
+  // 这里可以根据需要添加响应式处理逻辑
 }
 
-onMounted(() => {
-  handleResize()
-  window.addEventListener('resize', handleResize)
-  loadConfig()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
-
-// 加载配置
-const loadConfig = async () => {
-  try {
-    const res: any = await getPCAPConfig()
-    if (res.success) {
-      config.default_pcap_path = res.config.default_pcap_path
-      config.upload_dir = res.config.upload_dir
-      config.config_file_path = res.config.config_file_path
-      config.suricata_rules_dir = res.config.suricata_rules_dir
-      config.suricata_config = res.config.suricata_config
-      config.suricata_log_dir = res.config.suricata_log_dir
-      config.pcap_dir = res.config.pcap_dir
-      config.ssh_host = res.config.ssh_host || ''
-      config.ssh_user = res.config.ssh_user || ''
-      config.ssh_key = res.config.ssh_key || ''
-    }
-  } catch (error) {
-    console.error('加载配置失败:', error)
-    ElMessage.error('加载配置失败')
-  }
-}
-
-// 保存配置
-const saveConfig = async () => {
-  if (!formRef.value) return
-  
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        const res: any = await setPCAPConfig({ 
-          default_pcap_path: config.default_pcap_path,
-          upload_dir: config.upload_dir,
-          suricata_rules_dir: config.suricata_rules_dir,
-          suricata_config: config.suricata_config,
-          suricata_log_dir: config.suricata_log_dir,
-          pcap_dir: config.pcap_dir,
-          ssh_host: config.ssh_host,
-          ssh_user: config.ssh_user,
-          ssh_key: config.ssh_key
-        })
-        if (res.success) {
-          ElMessage.success(res.message)
-        } else {
-          ElMessage.error(res.message)
-        }
-      } catch (error: any) {
-        ElMessage.error(error.response?.data?.error || '保存配置失败')
-      }
-    }
-  })
-}
-
-// 重置配置
-const resetConfig = () => {
-  ElMessageBox.confirm(
-    '确定要重置所有配置吗？此操作不可撤销。',
-    '确认重置',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    config.default_pcap_path = '/home/kali/pcap_check'
-    config.upload_dir = 'uploads'
-    config.config_file_path = 'pcap_config.json'
-    config.suricata_rules_dir = 'C:\\Program Files\\Suricata\\rules'
-    config.suricata_config = 'C:\\Program Files\\Suricata\\suricata.yaml'
-    config.suricata_log_dir = 'C:\\Program Files\\Suricata\\log'
-    config.pcap_dir = 'C:\\pcap_check'
-    config.ssh_host = ''
-    config.ssh_user = ''
-    config.ssh_key = ''
-    ElMessage.success('配置已重置')
-  }).catch(() => {
-    // 用户取消操作
-  })
-}
+// 组件挂载时的初始化
+// 由于现在配置通过环境变量管理，不需要加载配置
 </script>
 
 <style scoped>
 .config-container {
   max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 .card-header {
@@ -421,23 +212,83 @@ const resetConfig = () => {
   font-weight: 500;
 }
 
-.form-tip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  font-size: 12px;
+.config-section {
+  margin-bottom: 30px;
+}
+
+.config-section h3 {
+  margin-bottom: 15px;
+  color: #303133;
+}
+
+.config-section p {
+  color: #606266;
+  line-height: 1.6;
+}
+
+.desc-detail {
+  margin-top: 8px;
+  font-size: 13px;
   color: #909399;
 }
 
-.config-info {
-  margin-top: 30px;
+.sample-config {
+  margin-top: 15px;
 }
 
-.config-info h3 {
-  margin-bottom: 16px;
-  font-size: 16px;
-  font-weight: 500;
+.sample-config h4 {
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+pre {
+  background-color: #f5f5f5;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 15px;
+  overflow-x: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #303133;
+  line-height: 1.5;
+}
+
+.status-result {
+  margin-top: 20px;
+}
+
+.success-card {
+  border: 1px solid #67c23a;
+  background-color: #f0f9ff;
+}
+
+.warning-card {
+  border: 1px solid #e6a23c;
+  background-color: #fdf6ec;
+}
+
+.error-card {
+  border: 1px solid #f56c6c;
+  background-color: #fef0f0;
+}
+
+.status-header {
+  margin-bottom: 10px;
+}
+
+.status-details p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.code-block {
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 14px;
+  margin: 10px 0;
+  overflow-x: auto;
 }
 
 @media (max-width: 768px) {
@@ -447,8 +298,13 @@ const resetConfig = () => {
     gap: 12px;
   }
   
-  .el-form-item__content {
-    flex-wrap: wrap;
+  .config-container {
+    padding: 10px;
+  }
+  
+  pre {
+    font-size: 12px;
+    padding: 10px;
   }
 }
 </style>
