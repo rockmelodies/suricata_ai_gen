@@ -89,22 +89,44 @@ class SuricataValidator:
                 return result
             
             # Write new rule
-            with open(rule_file, 'w') as f:
-                f.write(rule_content)
-            
-            # Clear previous logs and normalize path separators
-            fast_log = os.path.join(self.log_dir, "fast.log").replace('\\', '/')
-            eve_log = os.path.join(self.log_dir, "eve.json").replace('\\', '/')
-            
-            # Following the shell script approach - clear log files before running suricata
-            with open(fast_log, 'w') as f:
-                pass  # Truncate fast.log
             try:
-                with open(eve_log, 'w') as f:
+                with open(rule_file, 'w') as f:
+                    f.write(rule_content)
+                print(f"规则文件已创建: {rule_file}")
+                print(f"规则内容长度: {len(rule_content)}")
+            except Exception as e:
+                result["error"] = f"创建规则文件失败: {str(e)}"
+                result["engine_status"] = "rule_write_failed"
+                return result
+            
+            # Verify that the rule file exists and has content
+            if not os.path.exists(rule_file):
+                result["error"] = f"规则文件不存在: {rule_file}"
+                result["engine_status"] = "rule_file_missing"
+                return result
+            
+            if os.path.getsize(rule_file) == 0:
+                result["error"] = f"规则文件为空: {rule_file}"
+                result["engine_status"] = "rule_file_empty"
+                return result
+            
+            # Since we're not using -l flag, Suricata will likely create logs in the current directory
+            # Prepare paths for where logs might be created
+            import os
+            current_dir_fast_log = os.path.join(os.getcwd(), "fast.log")
+            current_dir_eve_log = os.path.join(os.getcwd(), "eve.json")
+            
+            # Clear logs in current directory where suricata likely writes them
+            try:
+                with open(current_dir_fast_log, 'w') as f:
+                    pass  # Truncate fast.log
+            except IOError:
+                pass  # May not be able to write, that's ok
+            try:
+                with open(current_dir_eve_log, 'w') as f:
                     pass  # Truncate eve.json
-            except FileNotFoundError:
-                # eve.json might not exist yet, that's ok
-                pass
+            except IOError:
+                pass  # May not be able to write, that's ok
             
             # Check if suricata is available
             suricata_cmd = self._get_suricata_command()
@@ -158,19 +180,9 @@ class SuricataValidator:
                 }
                 return result
             
-            # Check log directory as it's always needed when using -l flag
-            # Normalize log directory path
-            normalized_log_dir = self.log_dir.replace('\\', '/')
-            if not os.path.exists(self.log_dir):
-                result["error"] = f"Suricata日志目录不存在: {self.log_dir}"
-                result["engine_status"] = "log_dir_missing"
-                result["execution_details"] = {
-                    "log_dir": normalized_log_dir,
-                    "suricata_available": True,
-                    "config_exists": True,
-                    "log_dir_exists": False
-                }
-                return result
+            # Since we're not using -l flag, skip log directory check
+            # Suricata will use its default log location
+            pass
             
             # Run Suricata validation
             result["engine_status"] = "executing"
@@ -181,7 +193,7 @@ class SuricataValidator:
                 "log_dir": self.log_dir,
                 "pcap_path": pcap_path,
                 "rule_file": rule_file,
-                "command_using_c_flag": False,
+                "command_using_c_flag": True,
                 "command_using_s_flag": True,
                 "command_using_l_flag": False
             }
@@ -209,8 +221,8 @@ class SuricataValidator:
                     '-r', abs_pcap_path
                 ]
                 
-                # Store the command for debugging - simplified for Linux environment
-                result["execution_details"]["executed_command"] = ' '.join(cmd)
+                # Store the command for debugging - properly quote paths with spaces
+                result["execution_details"]["executed_command"] = ' '.join([f'"{arg}"' if ' ' in arg else arg for arg in cmd])
                 
                 print(f"正在测试: {abs_pcap_path}")
                 proc = subprocess.run(
@@ -230,10 +242,14 @@ class SuricataValidator:
                     return result
             
             # Parse results from fast.log
-            if os.path.exists(fast_log) and os.path.getsize(fast_log) > 0:
+            # Since we're not using -l flag, check logs in current directory
+            import os
+            current_dir_fast_log = os.path.join(os.getcwd(), "fast.log")
+            
+            if os.path.exists(current_dir_fast_log) and os.path.getsize(current_dir_fast_log) > 0:
                 result["matched"] = True
-                result["details"], result["alert_count"] = self._parse_fast_log(fast_log)
-                result["sid_stats"] = self._parse_sid_stats(fast_log)
+                result["details"], result["alert_count"] = self._parse_fast_log(current_dir_fast_log)
+                result["sid_stats"] = self._parse_sid_stats(current_dir_fast_log)
                 result["engine_status"] = "validation_success"
             else:
                 result["matched"] = False
