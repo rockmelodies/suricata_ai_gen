@@ -21,11 +21,13 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration - Load from environment variables
-API_KEY = os.getenv('AI_API_KEY')
+# First try to get from LLM_API_KEY, fallback to AI_API_KEY for backward compatibility
+API_KEY = os.getenv('LLM_API_KEY') or os.getenv('AI_API_KEY')
 if not API_KEY:
-    raise ValueError("AI_API_KEY not found in environment variables. Please create a .env file with AI_API_KEY=your_key")
+    raise ValueError("API_KEY not found in environment variables. Please set either LLM_API_KEY or AI_API_KEY in your .env file")
 
-AI_MODEL = os.getenv('AI_MODEL', '360gpt-pro')
+# Use LLM_MODEL first, then AI_MODEL for backward compatibility
+AI_MODEL = os.getenv('LLM_MODEL') or os.getenv('AI_MODEL', '360gpt-pro')
 DB_PATH = os.getenv('DB_PATH', os.path.join(os.path.dirname(__file__), 'suricata_rules.db'))
 
 # Initialize components
@@ -164,8 +166,8 @@ def validate_rule():
         data = request.json
         rule_content = data.get('rule_content', '')
         rule_id = data.get('rule_id')
-        # 从环境变量获取默认PCAP路径，如果环境变量未设置，则使用旧的默认路径
-        default_pcap_path = os.getenv('PCAP_UPLOAD_DIR', os.path.join(os.path.dirname(__file__), 'uploads'))
+        # 从环境变量获取默认PCAP路径，优先使用PCAP_DIR（兼容旧配置），然后是PCAP_UPLOAD_DIR
+        default_pcap_path = os.getenv('PCAP_DIR') or os.getenv('PCAP_UPLOAD_DIR', os.path.join(os.path.dirname(__file__), 'uploads'))
         pcap_path = data.get('pcap_path', default_pcap_path)
         
         if not rule_content:
@@ -175,7 +177,7 @@ def validate_rule():
         from suricata_validator import SuricataValidator
         # 优先从环境变量获取配置，这是主要的配置源
         rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
-        suricata_config = os.getenv('SURICATA_CONFIG_PATH', '/etc/suricata/suricata.yaml')
+        suricata_config = os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
         log_dir = os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
         
         current_suricata_validator = SuricataValidator.create_validator(
@@ -265,10 +267,26 @@ def get_validation_history(rule_id):
 def get_pcap_config():
     """Get current PCAP configuration"""
     try:
-        config = config_manager.get_all_configs()
+        # Get configs from both database and environment variables
+        db_config = config_manager.get_all_configs()
+        
+        # Add environment variable configurations
+        # Prioritize PCAP_DIR (current config) over PCAP_UPLOAD_DIR (legacy config)
+        pcap_dir = os.getenv('PCAP_DIR') or os.getenv('PCAP_UPLOAD_DIR', os.path.join(os.path.dirname(__file__), 'uploads'))
+        env_config = {
+            'default_pcap_path': pcap_dir,
+            'suricata_rules_dir': os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules'),
+            'suricata_config': os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml'),
+            'suricata_log_dir': os.getenv('SURICATA_LOG_DIR', '/var/log/suricata'),
+        }
+        
+        # Merge configurations (database configs override environment configs)
+        merged_config = env_config.copy()
+        merged_config.update(db_config)
+        
         return jsonify({
             "success": True,
-            "config": config
+            "config": merged_config
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -381,7 +399,7 @@ def validate_with_uploaded_pcap():
         from suricata_validator import SuricataValidator
         # 优先从环境变量获取配置，这是主要的配置源
         rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
-        suricata_config = os.getenv('SURICATA_CONFIG_PATH', '/etc/suricata/suricata.yaml')
+        suricata_config = os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
         log_dir = os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
         
         current_suricata_validator = SuricataValidator.create_validator(
@@ -521,7 +539,7 @@ def check_suricata():
             "/usr/local/etc/suricata/suricata.yaml",
             "/etc/default/suricata",
             # Also check configured path from environment variable
-            os.getenv('SURICATA_CONFIG_PATH', '/etc/suricata/suricata.yaml')
+            os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
         ]
         
         for config_path in possible_configs:
