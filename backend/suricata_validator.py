@@ -9,6 +9,7 @@ import re
 import shutil
 import platform
 import shlex
+import uuid
 from datetime import datetime
 from typing import Dict, List
 
@@ -62,7 +63,9 @@ class SuricataValidator:
         
         try:
             # Create temporary rule file and normalize path separators
-            rule_file = os.path.join(self.rules_dir, "vul.rules").replace('\\', '/')
+            # Use a unique rule filename to avoid conflicts
+            unique_rule_filename = f"vul_{uuid.uuid4().hex[:8]}.rules"
+            rule_file = os.path.join(self.rules_dir, unique_rule_filename).replace('\\', '/')
             
             # Check if rule content is valid
             if not rule_content or not rule_content.strip():
@@ -79,11 +82,6 @@ class SuricataValidator:
                 result["engine_status"] = "invalid_pcap_path"
                 return result
             
-            # Backup existing rules if they exist
-            if os.path.exists(rule_file):
-                backup_file = f"{rule_file}{self.backup_suffix}".replace('\\', '/')
-                shutil.copy2(rule_file, backup_file)  # Cross-platform file copy
-            
             # Write new rule
             with open(rule_file, 'w') as f:
                 f.write(rule_content)
@@ -92,13 +90,15 @@ class SuricataValidator:
             fast_log = os.path.join(self.log_dir, "fast.log").replace('\\', '/')
             eve_log = os.path.join(self.log_dir, "eve.json").replace('\\', '/')
             
-            # Check existence with original path format, then operate with normalized path
-            fast_log_orig = fast_log.replace('/', '\\')
-            eve_log_orig = eve_log.replace('/', '\\')
-            if os.path.exists(fast_log_orig):
-                open(fast_log, 'w').close()
-            if os.path.exists(eve_log_orig):
-                open(eve_log, 'w').close()
+            # Following the shell script approach - clear log files before running suricata
+            with open(fast_log, 'w') as f:
+                pass  # Truncate fast.log
+            try:
+                with open(eve_log, 'w') as f:
+                    pass  # Truncate eve.json
+            except FileNotFoundError:
+                # eve.json might not exist yet, that's ok
+                pass
             
             # Check if suricata is available
             suricata_cmd = self._get_suricata_command()
@@ -115,18 +115,6 @@ class SuricataValidator:
                     "suricata_available": False,
                     "attempted_command": "suricata",
                     "platform": platform.system()
-                }
-                return result
-            
-            # Check if config files exist - normalize path separators
-            normalized_config = self.suricata_config.replace('\\', '/')
-            if not os.path.exists(self.suricata_config):
-                result["error"] = f"Suricata配置文件不存在: {self.suricata_config}"
-                result["engine_status"] = "config_missing"
-                result["execution_details"] = {
-                    "config_file": normalized_config,
-                    "suricata_available": True,
-                    "config_exists": False
                 }
                 return result
             
@@ -164,21 +152,19 @@ class SuricataValidator:
                 }
                 return result
             
-            # Only check log directory if we're not using the default config
-            # since default config doesn't need explicit -l flag
-            if actual_config != '/etc/suricata/suricata.yaml' and actual_config != '/usr/local/etc/suricata/suricata.yaml' and actual_config != '/usr/etc/suricata/suricata.yaml':
-                # Normalize log directory path
-                normalized_log_dir = self.log_dir.replace('\\', '/')
-                if not os.path.exists(self.log_dir):
-                    result["error"] = f"Suricata日志目录不存在: {self.log_dir}"
-                    result["engine_status"] = "log_dir_missing"
-                    result["execution_details"] = {
-                        "log_dir": normalized_log_dir,
-                        "suricata_available": True,
-                        "config_exists": True,
-                        "log_dir_exists": False
-                    }
-                    return result
+            # Check log directory as it's always needed when using -l flag
+            # Normalize log directory path
+            normalized_log_dir = self.log_dir.replace('\\', '/')
+            if not os.path.exists(self.log_dir):
+                result["error"] = f"Suricata日志目录不存在: {self.log_dir}"
+                result["engine_status"] = "log_dir_missing"
+                result["execution_details"] = {
+                    "log_dir": normalized_log_dir,
+                    "suricata_available": True,
+                    "config_exists": True,
+                    "log_dir_exists": False
+                }
+                return result
             
             # Run Suricata validation
             result["engine_status"] = "executing"
@@ -188,9 +174,13 @@ class SuricataValidator:
                 "using_default_config": actual_config in ['/etc/suricata/suricata.yaml', '/usr/local/etc/suricata/suricata.yaml', '/usr/etc/suricata/suricata.yaml'],
                 "log_dir": self.log_dir,
                 "pcap_path": pcap_path,
-                "rule_file": rule_file
+                "rule_file": rule_file,
+                "command_using_c_flag": True,
+                "command_using_s_flag": True,
+                "command_using_l_flag": True
             }
             
+            # Get PCAP files to process
             pcap_files = self._get_pcap_files(pcap_path)
             
             if not pcap_files:
@@ -198,29 +188,25 @@ class SuricataValidator:
                 result["engine_status"] = "no_pcap_files"
                 return result
             
+            # Process each PCAP file
             for pcap in pcap_files:
                 result["execution_details"]["current_pcap"] = pcap
                 # Convert to absolute path and normalize path separators for cross-platform compatibility
                 abs_pcap_path = os.path.abspath(pcap).replace('\\', '/')
                 
-                if actual_config in ['/etc/suricata/suricata.yaml', '/usr/local/etc/suricata/suricata.yaml', '/usr/etc/suricata/suricata.yaml']:
-                    # For standard configs, use default config (don't specify -c flag) and no explicit -l flag
-                    cmd = suricata_cmd + [
-                        '-k', 'none',
-                        '-r', abs_pcap_path
-                    ]
-                else:
-                    # For custom configs, use -c flag to specify config and -l flag for log directory
-                    cmd = suricata_cmd + [
-                        '-c', f'"{actual_config}"',
-                        '-k', 'none',
-                        '-r', abs_pcap_path,
-                        '-l', f'"{self.log_dir}"'
-                    ]
+                # Following the stable shell script approach, use -c for config, -S for rules, -l for logs
+                cmd = suricata_cmd + [
+                    '-c', f'"{actual_config}"',
+                    '-S', rule_file,
+                    '-k', 'none',
+                    '-r', abs_pcap_path,
+                    '-l', f'"{self.log_dir}"'
+                ]
                 
                 # Store the command for debugging
                 result["execution_details"]["executed_command"] = ' '.join([f'"{arg}"' if ' ' in arg and arg[0] != chr(34) and arg[-1] != chr(34) else arg for arg in cmd])
                 
+                print(f"正在测试: {abs_pcap_path}")
                 proc = subprocess.run(
                     cmd,
                     capture_output=True,
@@ -234,6 +220,7 @@ class SuricataValidator:
                     result["execution_details"]["return_code"] = proc.returncode
                     result["execution_details"]["stderr"] = proc.stderr
                     result["execution_details"]["stdout"] = proc.stdout
+                    print(f"Suricata执行失败: {proc.stderr}")
                     return result
             
             # Parse results from fast.log
@@ -256,6 +243,14 @@ class SuricataValidator:
         except Exception as e:
             result["error"] = str(e)
             result["engine_status"] = "internal_error"
+        finally:
+            # Clean up the temporary rule file
+            try:
+                if os.path.exists(rule_file):
+                    os.remove(rule_file)
+            except Exception as cleanup_error:
+                # Log the cleanup error but don't fail the validation
+                print(f"Warning: Could not clean up temporary rule file {rule_file}: {cleanup_error}")
         
         return result
     
