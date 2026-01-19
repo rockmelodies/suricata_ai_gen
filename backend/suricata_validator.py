@@ -112,7 +112,6 @@ class SuricataValidator:
             
             # Since we're not using -l flag, Suricata will likely create logs in the current directory
             # Prepare paths for where logs might be created
-            import os
             current_dir_fast_log = os.path.join(os.getcwd(), "fast.log")
             current_dir_eve_log = os.path.join(os.getcwd(), "eve.json")
             
@@ -212,7 +211,6 @@ class SuricataValidator:
             
             # Parse results from fast.log
             # Since we're not using -l flag, check logs in current directory
-            import os
             current_dir_fast_log = os.path.join(os.getcwd(), "fast.log")
             
             if os.path.exists(current_dir_fast_log) and os.path.getsize(current_dir_fast_log) > 0:
@@ -237,8 +235,8 @@ class SuricataValidator:
         finally:
             # Clean up the temporary rule file
             try:
-                # Only attempt cleanup if rule_file was defined
-                if 'rule_file' in locals() and os.path.exists(rule_file):
+                # Only attempt cleanup if rule_file was defined and os module is available
+                if 'rule_file' in locals() and 'os' in globals() and os.path.exists(rule_file):
                     os.remove(rule_file)
             except Exception as cleanup_error:
                 # Log the cleanup error but don't fail the validation
