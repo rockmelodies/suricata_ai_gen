@@ -6,7 +6,7 @@
           <span>👥 用户管理</span>
           <el-button 
             type="primary" 
-            @click="showAddUserDialog = true"
+            @click="showAddUser"
           >
             <el-icon><Plus /></el-icon>
             新增用户
@@ -342,20 +342,22 @@ const authHeaders = computed(() => ({
 const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 
 // 表单验证规则
-const userFormRules: FormRules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名长度在3-20个字符', trigger: 'blur' }
-  ],
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-  ],
-  password: [
-    { required: !editingUser.value, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 20, message: '密码长度在6-20个字符', trigger: 'blur' }
-  ]
-}
+const userFormRules = computed(() => {
+  return {
+    username: [
+      { required: true, message: '请输入用户名', trigger: 'blur' },
+      { min: 3, max: 20, message: '用户名长度在3-20个字符', trigger: 'blur' }
+    ],
+    email: [
+      { required: true, message: '请输入邮箱', trigger: 'blur' },
+      { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    ],
+    password: [
+      { required: !editingUser.value, message: '请输入密码', trigger: 'blur' },
+      { min: 6, max: 20, message: '密码长度在6-20个字符', trigger: 'blur' }
+    ]
+  }
+})
 
 const passwordFormRules: FormRules = {
   new_password: [
@@ -426,6 +428,16 @@ const handlePageChange = (page: number) => {
 
 // 显示新增用户对话框
 const showAddUserDialog = ref(false)
+
+// 监听新增用户按钮点击，显示用户对话框
+const showAddUser = () => {
+  // 重置编辑状态
+  editingUser.value = null
+  // 重置表单
+  resetUserForm()
+  // 显示对话框
+  showUserDialog.value = true
+}
 
 // 编辑用户
 const handleEdit = (row: any) => {
