@@ -146,39 +146,9 @@ class SuricataValidator:
                 }
                 return result
             
-            # Check if config file exists - normalize path separators
-            # Look for the actual config file among possible locations
-            possible_configs = []
-            
-            # Add the configured path first
-            possible_configs.append(self.suricata_config)
-            
-            # Add common Kali Linux paths if using default
-            if self.suricata_config == '/etc/suricata/suricata.yaml':
-                possible_configs.extend([
-                    '/etc/suricata/suricata.yaml',
-                    '/usr/local/etc/suricata/suricata.yaml',
-                    '/etc/default/suricata',
-                    '/usr/etc/suricata/suricata.yaml'
-                ])
-            
-            # Find the first existing config file
-            actual_config = None
-            for config_path in possible_configs:
-                if os.path.exists(config_path):
-                    # Get absolute path to ensure consistency, and normalize to Linux format
-                    actual_config = os.path.abspath(config_path).replace('\\', '/')
-                    break
-            
-            if actual_config is None:
-                result["error"] = f"Suricata配置文件不存在: {self.suricata_config} (及常见位置)"
-                result["engine_status"] = "config_missing"
-                result["execution_details"] = {
-                    "config_file": self.suricata_config,
-                    "suricata_available": True,
-                    "config_exists": False
-                }
-                return result
+            # Since we're not using -c flag, we don't need to check config file existence
+            # Let suricata use its default configuration
+            actual_config = self.suricata_config
             
             # Since we're not using -l flag, skip log directory check
             # Suricata will use its default log location
@@ -193,7 +163,7 @@ class SuricataValidator:
                 "log_dir": self.log_dir,
                 "pcap_path": pcap_path,
                 "rule_file": rule_file,
-                "command_using_c_flag": True,
+                "command_using_c_flag": False,
                 "command_using_s_flag": True,
                 "command_using_l_flag": False
             }
@@ -212,10 +182,9 @@ class SuricataValidator:
                 # Convert to absolute path and normalize path separators for cross-platform compatibility
                 abs_pcap_path = os.path.abspath(pcap).replace('\\', '/')
                 
-                # Use -c flag with config and -S for rules, similar to the working shell script
+                # Execute suricata with rule file and pcap, let suricata use default config
                 # Make sure to properly quote paths that may contain spaces
                 cmd = suricata_cmd + [
-                    '-c', actual_config,
                     '-S', rule_file,
                     '-k', 'none',
                     '-r', abs_pcap_path
@@ -268,11 +237,15 @@ class SuricataValidator:
         finally:
             # Clean up the temporary rule file
             try:
-                if os.path.exists(rule_file):
+                # Only attempt cleanup if rule_file was defined
+                if 'rule_file' in locals() and os.path.exists(rule_file):
                     os.remove(rule_file)
             except Exception as cleanup_error:
                 # Log the cleanup error but don't fail the validation
-                print(f"Warning: Could not clean up temporary rule file {rule_file}: {cleanup_error}")
+                if 'rule_file' in locals():
+                    print(f"Warning: Could not clean up temporary rule file {rule_file}: {cleanup_error}")
+                else:
+                    print(f"Warning: Could not clean up temporary rule file: {cleanup_error}")
         
         return result
     
