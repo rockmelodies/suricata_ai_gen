@@ -203,15 +203,14 @@ class SuricataValidator:
                 # Convert to absolute path and normalize path separators for cross-platform compatibility
                 abs_pcap_path = os.path.abspath(pcap).replace('\\', '/')
                 
-                if actual_config == '/etc/suricata/suricata.yaml' or actual_config == '/usr/local/etc/suricata/suricata.yaml' or actual_config == '/usr/etc/suricata/suricata.yaml':
-                    # Use config file's log settings instead of command line -l flag for standard configs
+                if actual_config in ['/etc/suricata/suricata.yaml', '/usr/local/etc/suricata/suricata.yaml', '/usr/etc/suricata/suricata.yaml']:
+                    # For standard configs, use default config (don't specify -c flag) and no explicit -l flag
                     cmd = suricata_cmd + [
-                        '-c', f'"{actual_config}"',
                         '-k', 'none',
                         '-r', abs_pcap_path
                     ]
                 else:
-                    # For custom configs, use -l flag to specify log directory
+                    # For custom configs, use -c flag to specify config and -l flag for log directory
                     cmd = suricata_cmd + [
                         '-c', f'"{actual_config}"',
                         '-k', 'none',
