@@ -68,6 +68,11 @@ export const validateWithUploadedPCAP = (data: { rule_content: string; rule_id?:
   return request.post('/pcap/validate', data)
 }
 
+// 使用多个PCAP文件验证规则
+export const validateWithMultiplePCAPs = (data: { rule_content: string; rule_id?: number; pcap_filenames: string[] }) => {
+  return request.post('/pcap/validate_multiple', data)
+}
+
 // 检查Suricata引擎状态
 export const checkSuricataEngine = () => {
   return request.get('/suricata/check')
