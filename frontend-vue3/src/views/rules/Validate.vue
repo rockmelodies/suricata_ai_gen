@@ -60,6 +60,10 @@
                         <el-icon><List /></el-icon>
                         已上传文件
                       </el-dropdown-item>
+                      <el-dropdown-item @click="openMultiPCAPDialog">
+                        <el-icon><List /></el-icon>
+                        多PCAP验证
+                      </el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -105,23 +109,33 @@
       </template>
 
       <el-row :gutter="20">
-        <el-col :span="8">
+        <el-col :span="6">
           <el-statistic title="总告警数" :value="validationResult.alert_count">
             <template #suffix>
               <span style="font-size: 16px; margin-left: 4px">条</span>
             </template>
           </el-statistic>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <el-statistic
             title="匹配状态"
             :value="validationResult.matched ? '成功' : '失败'"
           />
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <el-statistic
             title="SID统计"
             :value="Object.keys(validationResult.sid_stats || {}).length"
+          >
+            <template #suffix>
+              <span style="font-size: 16px; margin-left: 4px">个</span>
+            </template>
+          </el-statistic>
+        </el-col>
+        <el-col :span="6" v-if="validationResult.total_pcaps">
+          <el-statistic
+            title="验证文件数"
+            :value="validationResult.total_pcaps"
           >
             <template #suffix>
               <span style="font-size: 16px; margin-left: 4px">个</span>
@@ -174,6 +188,42 @@
             </el-table>
           </div>
           <el-empty v-else description="暂无SID统计数据" />
+        </el-tab-pane>
+
+        <el-tab-pane label="📁 多PCAP详情" name="multi_pcap" v-if="validationResult.individual_results">
+          <div class="details-content">
+            <el-alert
+              :title="`在 ${validationResult.total_pcaps} 个文件中成功验证了 ${validationResult.successful_validations} 个`"
+              type="info"
+              :closable="false"
+              style="margin-bottom: 16px"
+            />
+            
+            <el-collapse accordion>
+              <el-collapse-item 
+                v-for="(result, index) in validationResult.individual_results" 
+                :key="index"
+                :title="`文件: ${result.pcap_filename} - ${result.matched ? '匹配成功' : '未匹配'} (${result.alert_count} 条告警)`"
+                :name="index"
+              >
+                <div style="padding: 16px; background-color: #fafafa; border-radius: 4px; margin: 8px 0;">
+                  <h4>告警详情:</h4>
+                  <div v-if="result.details && result.details.length > 0">
+                    <p v-for="(detail, idx) in result.details" :key="idx" style="margin: 4px 0;">{{ detail }}</p>
+                  </div>
+                  <p v-else>无告警详情</p>
+                  
+                  <h4 style="margin-top: 12px;">SID统计:</h4>
+                  <div v-if="result.sid_stats && Object.keys(result.sid_stats).length > 0">
+                    <p v-for="(count, sid) in result.sid_stats" :key="sid" style="margin: 4px 0;">
+                      {{ sid }}: {{ count }} 次
+                    </p>
+                  </div>
+                  <p v-else>无SID统计</p>
+                </div>
+              </el-collapse-item>
+            </el-collapse>
+          </div>
         </el-tab-pane>
 
         <el-tab-pane label="🛠️ 原始数据" name="raw">
@@ -290,6 +340,54 @@
         <el-button @click="showPCAPListDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+    
+    <!-- 多PCAP验证对话框 -->
+    <el-dialog
+      v-model="showMultiPCAPDialog"
+      title="多PCAP文件验证"
+      width="800px"
+    >
+      <div style="margin-bottom: 16px;">
+        <el-button
+          size="small"
+          @click="toggleSelectAll"
+          plain
+        >
+          {{ selectedPCAPs.length === uploadedPCAPs.length ? '取消全选' : '全选' }}
+        </el-button>
+        <span style="margin-left: 12px; color: #606266;">
+          已选择 {{ selectedPCAPs.length }} 个文件
+        </span>
+      </div>
+      
+      <el-table
+        :data="uploadedPCAPs"
+        v-loading="loadingPCAPs"
+        border
+        @selection-change="(selection) => {
+          selectedPCAPs.value = selection.map(item => item.filename);
+        }"
+        style="width: 100%"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column prop="filename" label="文件名" width="250" show-overflow-tooltip />
+        <el-table-column prop="size" label="大小" width="120">
+          <template #default="{ row }">
+            {{ Math.round(row.size / 1024) }} KB
+          </template>
+        </el-table-column>
+        <el-table-column prop="upload_time" label="上传时间" width="180">
+          <template #default="{ row }">
+            {{ new Date(row.upload_time * 1000).toLocaleString() }}
+          </template>
+        </el-table-column>
+      </el-table>
+      
+      <template #footer>
+        <el-button @click="showMultiPCAPDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleMultiPCAPValidate">开始验证</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -307,7 +405,7 @@ import {
 } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ValidationForm, ValidationResult } from '@/types'
-import { validateRule, getRuleList, getPCAPConfig, setPCAPConfig, uploadPCAP, getUploadedPCAPs, deletePCAP, validateWithUploadedPCAP } from '@/api/rules'
+import { validateRule, getRuleList, getPCAPConfig, setPCAPConfig, uploadPCAP, getUploadedPCAPs, deletePCAP, validateWithUploadedPCAP, validateWithMultiplePCAPs } from '@/api/rules'
 
 const formRef = ref<FormInstance>()
 const validating = ref(false)
@@ -322,6 +420,8 @@ const pcapConfig = ref({ default_pcap_path: '' })
 const uploadedPCAPs = ref<any[]>([])
 const showPCAPUploadDialog = ref(false)
 const showPCAPListDialog = ref(false)
+const showMultiPCAPDialog = ref(false)
+const selectedPCAPs = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement>()
 const uploading = ref(false)
 const loadingPCAPs = ref(false)
@@ -571,6 +671,68 @@ const closePCAPUploadDialog = () => {
   showPCAPUploadDialog.value = false
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
+  }
+}
+
+// 打开多PCAP验证对话框
+const openMultiPCAPDialog = async () => {
+  await loadUploadedPCAPs()
+  selectedPCAPs.value = []
+  showMultiPCAPDialog.value = true
+}
+
+// 处理多PCAP验证
+const handleMultiPCAPValidate = async () => {
+  if (!form.rule_content) {
+    ElMessage.warning('请先输入规则内容')
+    return
+  }
+  
+  if (selectedPCAPs.value.length === 0) {
+    ElMessage.warning('请至少选择一个PCAP文件')
+    return
+  }
+  
+  validating.value = true
+  try {
+    const res: any = await validateWithMultiplePCAPs({
+      rule_content: form.rule_content,
+      rule_id: undefined,
+      pcap_filenames: selectedPCAPs.value
+    })
+    
+    validationResult.value = res.validation_result
+    
+    if (res.validation_result.matched) {
+      ElMessage.success(`多PCAP验证成功！在 ${res.validation_result.total_pcaps} 个文件中匹配到 ${res.validation_result.alert_count} 条告警`)
+    } else {
+      ElMessage.warning(`多PCAP验证完成，在 ${res.validation_result.total_pcaps} 个文件中未匹配到告警`)
+    }
+    
+    showMultiPCAPDialog.value = false
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '多PCAP验证失败')
+  } finally {
+    validating.value = false
+  }
+}
+
+// 切换PCAP文件选择状态
+const togglePCAPSelection = (filename: string) => {
+  const index = selectedPCAPs.value.indexOf(filename)
+  if (index > -1) {
+    selectedPCAPs.value.splice(index, 1)
+  } else {
+    selectedPCAPs.value.push(filename)
+  }
+}
+
+// 全选/取消全选PCAP文件
+const toggleSelectAll = () => {
+  if (selectedPCAPs.value.length === uploadedPCAPs.value.length) {
+    selectedPCAPs.value = []
+  } else {
+    selectedPCAPs.value = uploadedPCAPs.value.map(item => item.filename)
   }
 }
 </script>
