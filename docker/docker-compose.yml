@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: suricata_ai_backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../uploads:/app/uploads
+      - ../suricata_rules.db:/app/backend/suricata_rules.db
+    environment:
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+    restart: unless-stopped
+    networks:
+      - suricata_network
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: suricata_ai_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - suricata_network
+
+networks:
+  suricata_network:
+    driver: bridge
