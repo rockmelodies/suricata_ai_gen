@@ -648,7 +648,7 @@ def build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc):
     if poc:
         prompt += f"\nPOC示例:\n{poc}\n"
     
-    prompt += """
+    prompt += '''
 请严格遵循以下规范:
 
 1. 基本规则格式:
@@ -671,27 +671,27 @@ def build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc):
    - 严格按照下面的模板使用，只修改参数名，匹配注入的正则不要修改
    
 4.  **字符转义保护**：
-    - **禁止**将正则中的十六进制转义序列（如 `\x26`, `\x5f`）转换为它们所代表的ASCII字符（`&`, `_`）。
-    - **禁止**将类似 `(\x5f|%5f)` 的结构简化为 `(_|%5f)` 或任何其他形式。
-    - 必须保持模板中PCRE字符串的**原始文本**，包括所有反斜杠`\`和字母数字组合。模型的任务是**填充变量，而非解析代码**。
-5.  **使用方式**：请严格遵循第四部分提供的模板。**只允许**替换模板中明确指出的“参数名”或“漏洞标题”等中文描述部分。PCRE表达式的主体结构（如 `[^\r\n\x26]{0,10}(select|union|...)` 和 `load(\x5f|%5f)file`）**严禁修改**。
+    - **禁止**将正则中的十六进制转义序列（如 `\\x26`, `\\x5f`）转换为它们所代表的ASCII字符（`&`, `_`）。
+    - **禁止**将类似 `(\\x5f|%5f)` 的结构简化为 `(_|%5f)` 或任何其他形式。
+    - 必须保持模板中PCRE字符串的**原始文本**，包括所有反斜杠`\\`和字母数字组合。模型的任务是**填充变量，而非解析代码**。
+5.  **使用方式**：请严格遵循第四部分提供的模板。**只允许**替换模板中明确指出的"参数名"或"漏洞标题"等中文描述部分。PCRE表达式的主体结构（如 `[^\\r\\n\\x26]{0,10}(select|union|...)` 和 `load(\\x5f|%5f)file`）**严禁修改**.
 
 
 6. 不同漏洞类型的模板（严格遵循）:
 
-【SQL注入】强制要求：不要修改模版中pcre部分[^\r\n\x26]、load(\x5f|%5f)
-alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri.raw; content:"请求uri的内容"; nocase; content:"可以执行sql注入命令的参数="; nocase; pcre:"/可以执行sql注入命令的参数=[^\r\n\x26]{0,10}(select|union|sleep|load(\x5f|%5f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(\x2d|%2d){2}|\x27|%27|\x23|%23)/Ii"; sid:XXXXXXX; rev:1;)
+【SQL注入】强制要求：不要修改模版中pcre部分[^\\r\\n\\x26]、load(\\x5f|%5f)
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri.raw; content:"请求uri的内容"; nocase; content:"可以执行sql注入命令的参数="; nocase; pcre:"/可以执行sql注入命令的参数=[^\\r\\n\\x26]{0,10}(select|union|sleep|load(\\x5f|%5f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(\\x2d|%2d){2}|\\x27|%27|\\x23|%23)/Ii"; sid:XXXXXXX; rev:1;)
 或者
-alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容";http.request_body;nocase; content:"可以执行sql注入命令的参数="; nocase; pcre:"/可以执行sql注入命令的参数==[^\r\n\x26]{0,10}(select|union|sleep|load(\x5f|\x255f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(\x2d|%2d){2}|\x27|%27|\x23|%23)/Pi"; sid:XXXXXXX; rev:1;)
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容";http.request_body;nocase; content:"可以执行sql注入命令的参数="; nocase; pcre:"/可以执行sql注入命令的参数==[^\\r\\n\\x26]{0,10}(select|union|sleep|load(\\x5f|\\x255f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(\\x2d|%2d){2}|\\x27|%27|\\x23|%23)/Pi"; sid:XXXXXXX; rev:1;)
 
 【命令注入】
-alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; http.request_body; content:"可以执行命令的参数key="; nocase; pcre:"/可以执行命令的参数=[^\r\n\x26]{0,10}(\x60|\x2560|\x27|\x2527|\x3b|\x253b|\x7c|\x257c)/Pi"; sid:XXXXXXX; rev:1;)
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; http.request_body; content:"可以执行命令的参数key="; nocase; pcre:"/可以执行命令的参数=[^\\r\\n\\x26]{0,10}(\\x60|\\x2560|\\x27|\\x2527|\\x3b|\\x253b|\\x7c|\\x257c)/Pi"; sid:XXXXXXX; rev:1;)
 
 【文件读取/目录遍历/路径遍历】
-alert http any any -> any any (msg:"漏洞标题"; flow:to_server,established; http.uri.raw; content:"请求uri的内容"; nocase; content:"存在文件读取或目录遍历或路径遍历的参数="; nocase; pcre:"/存在文件读取或目录遍历或路径遍历的参数=[^\r\n\x26]{0,10}((\x2e|\x252e){1,2}|[A-Z](\x3a|%3a))(\x2f|\x252f|\x5c|\x255c)/Ii"; sid:XXXXXXX; rev:1;)
+alert http any any -> any any (msg:"漏洞标题"; flow:to_server,established; http.uri.raw; content:"请求uri的内容"; nocase; content:"存在文件读取或目录遍历或路径遍历的参数="; nocase; pcre:"/存在文件读取或目录遍历或路径遍历的参数=[^\\r\\n\\x26]{0,10}((\\x2e|\\x252e){1,2}|[A-Z](\\x3a|%3a))(\\x2f|%2f|\\x5c|\\x255c)/Ii"; sid:XXXXXXX; rev:1;)
 
 【服务端请求伪造(SSRF)】
-alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.method; content:"GET"; http.uri; content:"请求uri的内容"; nocase; content:"存在服务端请求伪造(SSRF)的参数="; nocase; pcre:"/存在服务端请求伪造(SSRF)的参数=(https?|files?|.?ftp|dict)(\x3a|%3a)(\x2f|%2f)/Ui"; sid:XXXXXXX; rev:1;)
+alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.method; content:"GET"; http.uri; content:"请求uri的内容"; nocase; content:"存在服务端请求伪造(SSRF)的参数="; nocase; pcre:"/存在服务端请求伪造(SSRF)的参数=(https?|files?|.?ftp|dict)(\\x3a|%3a)(\\x2f|%2f)/Ui"; sid:XXXXXXX; rev:1;)
 
 【文件上传攻击】
 alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; http.request_body; content:"name=|22|上传XX功能柜使用的特地字段名|22|"; nocase; content:"filename="; nocase; content:"编程语言起始标签"; distance:0; sid:XXXXXXX; rev:1;)
@@ -700,14 +700,15 @@ alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; h
 alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; content:"参考这个op=GetUsersInfo套用吧"; nocase; http.header.raw; content:!"|0a|参考这个Authorization套用吧"; nocase; content:!"|0a|参考这个Cookie套用吧"; nocase; sid:XXXXXXX; rev:1;)
 
 7. 重要注意事项:
-   - 强制使用模版中pcre部分[^\r\n\x26]、load(\x5f|%5f)
-   - pcre正则表达式中的匹配部分[^\r\n\x26]{0,10}(select|union|sleep|load(\x5f|\x255f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(-|%2d){2}|'|%27|#|%23)/Pi"; 等）不要修改，只替换参数名
+   - 强制使用模版中pcre部分[^\\r\\n\\x26]、load(\\x5f|%5f)
+   - pcre正则表达式中的匹配部分[^\\r\\n\\x26]{0,10}(select|union|sleep|load(\\x5f|\\x255f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(-|%2d){2}|'|%27|#|%23)/Pi"; 等）不要修改，只替换参数名
    - 严格按照模板格式，不要添加reference, classtype, affected_version等字段
    - sid必须是7位数字，范围在9000000-9999999
    - 根据漏洞类型选择对应的模板，严格遵循模板结构
    
+   
 请直接输出Suricata规则，不要包含其他解释文字。
-"""
+'''
     
     return prompt
 

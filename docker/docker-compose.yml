@@ -14,6 +14,7 @@ services:
     environment:
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=5000
+      - APP_FILE=app_v2.py  # Specify which app file to use
     restart: unless-stopped
     networks:
       - suricata_network

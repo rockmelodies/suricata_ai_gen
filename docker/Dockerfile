@@ -22,4 +22,4 @@ RUN mkdir -p uploads
 EXPOSE 5000
 
 # 启动命令
-CMD ["python", "backend/app_with_auth.py"]
+CMD ["python", "backend/app_v2.py"]

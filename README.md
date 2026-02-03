@@ -97,13 +97,19 @@ pip install -r backend/requirements.txt
 # 启动后端
 cd backend
 source ../.venv/bin/activate
-python app_with_auth.py
+python app_v2.py  # 或者 python app_with_auth.py
 
 # 启动前端
 cd ../frontend-vue3
 npm install
 npm run dev
 ```
+
+**说明**: 我们提供了两个后端入口文件：
+- `app_v2.py`: 基于Flask-RESTX的现代化API服务，支持OpenAPI文档和JWT认证（推荐）
+- `app_with_auth.py`: 带用户认证功能的完整版本
+
+推荐使用 `app_v2.py` 进行开发和部署。
 
 ### 🐳 Docker部署
 
