@@ -83,7 +83,7 @@
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column prop="updated_at" label="更新时间" width="180" />
-        <el-table-column label="操作" :width="isMobile ? 180 : 260" fixed="right">
+        <el-table-column label="操作"  fixed="right">
           <template #default="{ row }">
             <el-button-group class="button-group">
               <el-button

@@ -10,6 +10,10 @@ import shutil
 import platform
 import shlex
 import uuid
+import pwd
+import grp
+import sys
+import json
 from datetime import datetime
 from typing import Dict, List
 
@@ -181,24 +185,83 @@ class SuricataValidator:
                 # Convert to absolute path and normalize path separators for cross-platform compatibility
                 abs_pcap_path = os.path.abspath(pcap).replace('\\', '/')
                 
-                # Execute suricata with rule file and pcap, let suricata use default config
-                # Make sure to properly quote paths that may contain spaces
-                cmd = suricata_cmd + [
-                    '-S', rule_file,
-                    '-k', 'none',
-                    '-r', abs_pcap_path
-                ]
+                # Execute suricata with rule file and pcap
+                # For security, we'll call a separate script with elevated privileges if needed
+                cmd = []
                 
-                # Store the command for debugging - properly quote paths with spaces
+                # Check if we're running as root to determine execution method
+                if os.geteuid() == 0:
+                    # We're already running with elevated privileges
+                    cmd = suricata_cmd + [
+                        '-S', rule_file,
+                        '-k', 'none',
+                        '-r', abs_pcap_path
+                    ]
+                    
+                    print(f"正在测试: {abs_pcap_path}")
+                    print(f"执行命令: {' '.join(cmd)}")
+                    proc = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=300
+                    )
+                else:
+                    # We need to call our helper script with sudo
+                    # This is safer than running the entire web application with sudo
+                    helper_script = os.path.join(os.path.dirname(__file__), 'run_suricata_as_root.py')
+                    
+                    if os.path.exists(helper_script):
+                        cmd = ['sudo', sys.executable, helper_script, 
+                               '--rules-file', rule_file,
+                               '--pcap-file', abs_pcap_path]
+                        
+                        # Add config file if it exists
+                        if os.path.exists(self.suricata_config):
+                            cmd.extend(['--config-file', self.suricata_config])
+                        
+                        print(f"正在测试: {abs_pcap_path}")
+                        print(f"执行命令: {' '.join(cmd)}")
+                        proc = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=300
+                        )
+                        
+                        # Parse the JSON response from our helper script
+                        try:
+                            helper_result = json.loads(proc.stdout)
+                            # Simulate the original proc object behavior
+                            class MockProc:
+                                def __init__(self, result):
+                                    self.returncode = result['returncode']
+                                    self.stdout = result['stdout']
+                                    self.stderr = result['stderr']
+                            proc = MockProc(helper_result)
+                        except json.JSONDecodeError:
+                            # If JSON parsing fails, treat as error
+                            proc = subprocess.CompletedProcess([], 1, "", "Failed to parse helper script output")
+                    else:
+                        # Fallback: try to run directly (may fail due to permissions)
+                        cmd = suricata_cmd + [
+                            '-S', rule_file,
+                            '-k', 'none',
+                            '-r', abs_pcap_path
+                        ]
+                        
+                        print(f"正在测试: {abs_pcap_path}")
+                        print(f"执行命令: {' '.join(cmd)}")
+                        proc = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=300
+                        )
+                
+                # Store the command for debugging
                 result["execution_details"]["executed_command"] = ' '.join([f'"{arg}"' if ' ' in arg else arg for arg in cmd])
-                
-                print(f"正在测试: {abs_pcap_path}")
-                proc = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
+                result["execution_details"]["running_with_sudo_helper"] = (os.geteuid() != 0)
                 
                 if proc.returncode != 0:
                     result["error"] = f"Suricata执行失败: {proc.stderr}"

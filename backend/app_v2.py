@@ -2,23 +2,24 @@
 # encoding: utf-8
 # Suricata Rule Generation and Validation Tool - Backend API v2
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import json
+import sys
 import os
+
+# Attempt to import dependencies with error handling
+try:
+    from flask import Flask, request, jsonify
+    from flask_cors import CORS
+except ImportError as e:
+    print(f"Error importing Flask dependencies: {e}")
+    print("Try installing packages with sudo: sudo pip install -r requirements.txt")
+    sys.exit(1)
+
+import json
 from datetime import datetime
 from dotenv import load_dotenv
-from database import Database
-from llm_client import create_llm_client_from_env
-from suricata_validator import SuricataValidator
-from config_manager import ConfigManager
-from user_model import UserModel
 
 # Load environment variables from .env file
 load_dotenv()
-
-app = Flask(__name__)
-CORS(app)
 
 # Configuration - Load from environment variables
 # First try to get from LLM_API_KEY, fallback to AI_API_KEY for backward compatibility
@@ -29,6 +30,19 @@ if not API_KEY:
 # Use LLM_MODEL first, then AI_MODEL for backward compatibility
 AI_MODEL = os.getenv('LLM_MODEL') or os.getenv('AI_MODEL', '360gpt-pro')
 DB_PATH = os.getenv('DB_PATH', os.path.join(os.path.dirname(__file__), 'suricata_rules.db'))
+
+try:
+    from database import Database
+    from llm_client import create_llm_client_from_env
+    from suricata_validator import SuricataValidator
+    from config_manager import ConfigManager
+    from user_model import UserModel
+except ImportError as e:
+    print(f"Error importing internal modules: {e}")
+    sys.exit(1)
+
+app = Flask(__name__)
+CORS(app)
 
 # Initialize components
 db = Database(DB_PATH)
