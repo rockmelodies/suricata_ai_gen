@@ -46,7 +46,17 @@ class SuricataValidator:
                 # Suricata not found on Windows
                 return None
         else:
-            return ['suricata']
+            # In Kali Linux, suricata might be in different locations
+            suricata_cmd = shutil.which('suricata')
+            if suricata_cmd:
+                return [suricata_cmd]
+            else:
+                # Try common locations in Kali Linux
+                for cmd_path in ['/usr/bin/suricata', '/usr/local/bin/suricata', '/sbin/suricata']:
+                    if os.path.exists(cmd_path):
+                        return [cmd_path]
+                # If not found anywhere, return default
+                return ['suricata']
     
     def validate_rule(self, rule_content: str, pcap_path: str) -> Dict:
         """
