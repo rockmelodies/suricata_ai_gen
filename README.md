@@ -85,10 +85,14 @@ nano .env
 #### 3. 创建虚拟环境
 
 ```bash
+#需要在特权环境下运行
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r backend/requirements.txt
+
+#在非特权环境运行
+sudo -H /home/kali/installpackage/suricata_ai_gen/.venv/bin/python app_v2.py
 ```
 
 #### 4. 启动服务
