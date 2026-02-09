@@ -556,13 +556,27 @@ def check_suricata():
             os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
         ]
         
-        for config_path in possible_configs:
-            if os.path.exists(config_path):
-                result["config_found"] = True
-                result["config_path"] = config_path
-                result["message"] += f", 找到配置文件: {config_path}"
-                break
+        # Remove duplicates and check each config file
+        unique_configs = list(dict.fromkeys(possible_configs))  # Remove duplicates while preserving order
+        found_configs = []
+        missing_configs = []
         
+        for config_path in unique_configs:
+            if os.path.exists(config_path):
+                found_configs.append(config_path)
+            else:
+                missing_configs.append(config_path)
+        
+        if found_configs:
+            result["config_found"] = True
+            result["config_path"] = found_configs[0]  # Use the first found config
+            result["found_configs"] = found_configs
+            result["message"] += f", 找到配置文件: {found_configs[0]}"
+        else:
+            result["config_found"] = False
+            result["missing_configs"] = missing_configs
+            result["message"] += f", 未找到配置文件。已检查路径: {', '.join(missing_configs)}"
+            
         # Check if configured directories exist
         rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
         log_dir = os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')

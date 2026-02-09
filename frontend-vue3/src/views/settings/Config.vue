@@ -113,7 +113,23 @@
                   {{ suricataStatus.config_found ? '是' : '否' }}
                 </el-tag>
               </p>
-              <p v-if="suricataStatus.config_path"><strong>配置路径:</strong> {{ suricataStatus.config_path }}</p>
+              <div v-if="suricataStatus.config_found && suricataStatus.found_configs" class="config-list">
+                <p><strong>找到的配置文件:</strong></p>
+                <ul>
+                  <li v-for="config in suricataStatus.found_configs" :key="config">
+                    <el-tag type="success" size="small">{{ config }}</el-tag>
+                  </li>
+                </ul>
+              </div>
+              <div v-if="!suricataStatus.config_found && suricataStatus.missing_configs" class="config-list">
+                <p><strong>未找到的配置文件:</strong></p>
+                <ul>
+                  <li v-for="config in suricataStatus.missing_configs" :key="config">
+                    <el-tag type="danger" size="small">{{ config }}</el-tag>
+                  </li>
+                </ul>
+              </div>
+              <p v-if="suricataStatus.config_path"><strong>使用配置路径:</strong> {{ suricataStatus.config_path }}</p>
               <p><strong>规则目录存在:</strong> 
                 <el-tag :type="suricataStatus.rules_dir_exists ? 'success' : 'danger'">
                   {{ suricataStatus.rules_dir_exists ? '是' : '否' }}
@@ -277,6 +293,35 @@ pre {
 .status-details p {
   margin: 8px 0;
   font-size: 14px;
+}
+
+.config-list {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #409eff;
+}
+
+.config-list p {
+  margin: 0 0 8px 0;
+  font-weight: 500;
+  color: #303133;
+}
+
+.config-list ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.config-list li {
+  margin: 4px 0;
+  list-style: none;
+}
+
+.config-list li .el-tag {
+  margin-right: 8px;
+  font-family: 'Courier New', monospace;
 }
 
 .code-block {
