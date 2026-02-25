@@ -57,7 +57,135 @@
 ![img_6.png](img_6.png)
 ## 部署方式
 
-### 🐧 Linux/Kali部署
+### 🐳 Docker部署（推荐）
+
+#### 📦 Docker Hub镜像
+
+我们已经将应用容器化并推送到Docker Hub，你可以直接拉取使用：
+
+| 服务 | Docker Hub镜像 | 说明 |
+|------|---------------|------|
+| 后端API | `rockmedia/suricata-ai-backend:latest` | Python Flask API服务 |
+| 前端Web | `rockmedia/suricata-frontend:latest` | Vue.js前端 + nginx |
+
+#### 🚀 快速启动（使用Docker Hub镜像）
+
+##### 方法一：手动启动
+
+```bash
+# 1. 拉取镜像
+docker pull rockmedia/suricata-ai-backend:latest
+docker pull rockmedia/suricata-frontend:latest
+
+# 2. 创建必要的目录
+mkdir -p uploads
+
+# 3. 创建配置文件
+cp .env.example .env
+# 编辑.env文件，设置你的API密钥等配置
+
+# 4. 启动后端服务
+docker run -d \
+  --name suricata-backend \
+  -p 5000:5000 \
+  -v $(pwd)/uploads:/app/uploads \
+  -v $(pwd)/.env:/app/.env \
+  --restart unless-stopped \
+  rockmedia/suricata-ai-backend:latest
+
+# 5. 启动前端服务
+docker run -d \
+  --name suricata-frontend \
+  -p 5173:80 \
+  --add-host=host.docker.internal:host-gateway \
+  --restart unless-stopped \
+  rockmedia/suricata-frontend:latest
+```
+
+##### 方法二：使用docker-compose（推荐）
+
+创建 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+
+services:
+  backend:
+    image: rockmedia/suricata-ai-backend:latest
+    container_name: suricata-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./.env:/app/.env
+    restart: unless-stopped
+    networks:
+      - suricata-network
+
+  frontend:
+    image: rockmedia/suricata-frontend:latest
+    container_name: suricata-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - suricata-network
+
+networks:
+  suricata-network:
+    driver: bridge
+```
+
+然后启动服务：
+
+```bash
+# 启动服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
+```
+
+#### 🌐 访问应用
+
+- **前端界面**: http://localhost:5173
+- **后端API**: http://localhost:5000
+- **API健康检查**: http://localhost:5000/api/health
+- **默认管理员账户**: `admin` / `admin123`（生产环境请修改）
+
+#### 🔧 管理命令
+
+```bash
+# 查看容器状态
+docker ps --filter "name=suricata"
+
+# 查看后端日志
+docker logs suricata-backend
+
+# 查看前端日志
+docker logs suricata-frontend
+
+# 重启服务
+docker restart suricata-backend suricata-frontend
+
+# 停止服务
+docker stop suricata-backend suricata-frontend
+
+# 删除服务
+docker rm suricata-backend suricata-frontend
+```
+
+### 🐧 本地开发部署
 
 #### 1. 系统准备
 
@@ -114,34 +242,6 @@ npm run dev
 - `app_with_auth.py`: 带用户认证功能的完整版本
 
 推荐使用 `app_v2.py` 进行开发和部署。
-
-### 🐳 Docker部署
-
-#### 1. 安装Docker
-
-```bash
-sudo apt update
-sudo apt install docker.io docker-compose -y
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker $USER
-```
-
-#### 2. 使用Docker部署
-
-```bash
-# 进入docker目录
-cd docker
-
-# 构建并启动服务
-docker-compose up -d
-
-# 查看服务状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f
-```
 
 ### 🔧 自动化部署
 
