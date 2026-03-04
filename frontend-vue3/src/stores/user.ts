@@ -27,6 +27,7 @@ export const useUserStore = defineStore('user', () => {
     token.value = ''
     user.value = null
     isLoggedIn.value = false
+    isAuthInitialized.value = false
     localStorage.removeItem('access_token')
     localStorage.removeItem('user')
   }
@@ -40,6 +41,7 @@ export const useUserStore = defineStore('user', () => {
       token.value = res.access_token
       user.value = res.user
       isLoggedIn.value = true
+      isAuthInitialized.value = true
 
       // 持久化到localStorage
       localStorage.setItem('access_token', res.access_token)
