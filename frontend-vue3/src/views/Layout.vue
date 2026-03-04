@@ -31,6 +31,11 @@
           <el-menu-item index="/rules/validate">验证规则</el-menu-item>
         </el-sub-menu>
 
+        <el-menu-item index="/agent">
+          <el-icon><Connection /></el-icon>
+          <span>Agent API</span>
+        </el-menu-item>
+
         <el-menu-item v-if="userStore.isAdmin()" index="/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
@@ -116,7 +121,8 @@ import {
   Setting,
   Expand,
   Fold,
-  Monitor
+  Monitor,
+  Connection
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

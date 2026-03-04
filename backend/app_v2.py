@@ -709,6 +709,212 @@ def list_users():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/agent/run', methods=['POST'])
+def agent_run():
+    """
+    Agent API - 一次调用完成规则生成+验证全流程
+    支持 API Key 认证（X-API-Key header 或 api_key query param）
+    也支持 Bearer token 认证
+
+    请求体:
+      vuln_name: str (必填)
+      vuln_description: str (必填)
+      vuln_type: str (可选)
+      poc: str (可选)
+      pcap_filename: str (可选，已上传的PCAP文件名，不填则跳过验证)
+      auto_optimize: bool (可选，默认false，验证失败时是否自动优化)
+      max_optimize_rounds: int (可选，默认2，最大优化轮次)
+
+    返回:
+      task_id, status, generated_rule, validation_result, optimize_history
+    """
+    try:
+        # 认证：支持 API Key 或 Bearer token
+        api_key_header = request.headers.get('X-API-Key') or request.args.get('api_key')
+        auth_header = request.headers.get('Authorization', '')
+
+        authenticated = False
+        if api_key_header:
+            # API Key 认证：与 JWT_SECRET 比对（或单独配置 AGENT_API_KEY）
+            expected_key = os.getenv('AGENT_API_KEY') or JWT_SECRET
+            if hmac.compare_digest(api_key_header, expected_key):
+                authenticated = True
+        elif auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            if _verify_token(token) is not None:
+                authenticated = True
+
+        if not authenticated:
+            return jsonify({"error": "未授权，请提供有效的 X-API-Key 或 Bearer token"}), 401
+
+        data = request.json or {}
+        vuln_name = data.get('vuln_name', '').strip()
+        vuln_description = data.get('vuln_description', '').strip()
+        vuln_type = data.get('vuln_type', '')
+        poc = data.get('poc', '')
+        pcap_filename = data.get('pcap_filename', '')
+        auto_optimize = data.get('auto_optimize', False)
+        max_optimize_rounds = min(int(data.get('max_optimize_rounds', 2)), 5)
+
+        if not vuln_name or not vuln_description:
+            return jsonify({"error": "缺少必要参数: vuln_name 和 vuln_description"}), 400
+
+        result = {
+            "status": "started",
+            "vuln_name": vuln_name,
+            "vuln_type": vuln_type,
+            "rule_id": None,
+            "generated_rule": None,
+            "validation_result": None,
+            "optimize_history": [],
+            "final_rule": None,
+            "steps": []
+        }
+
+        # Step 1: 生成规则
+        result["steps"].append({"step": "generate", "status": "running"})
+        prompt = build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc)
+        ai_response = llm_client.generate_text(prompt, temperature=0.1, max_tokens=4096)
+
+        if 'error' in ai_response:
+            result["status"] = "failed"
+            result["steps"][-1]["status"] = "failed"
+            result["steps"][-1]["error"] = ai_response['error']
+            return jsonify(result), 502
+
+        if not ('choices' in ai_response and len(ai_response['choices']) > 0):
+            result["status"] = "failed"
+            result["steps"][-1]["status"] = "failed"
+            result["steps"][-1]["error"] = "AI未返回有效内容"
+            return jsonify(result), 500
+
+        generated_rule = ai_response['choices'][0]['message']['content'].strip()
+        rule_id = db.insert_rule(
+            vuln_name=vuln_name,
+            original_rule=generated_rule,
+            current_rule=generated_rule,
+            vuln_type=vuln_type,
+            description=vuln_description
+        )
+        result["generated_rule"] = generated_rule
+        result["final_rule"] = generated_rule
+        result["rule_id"] = rule_id
+        result["steps"][-1]["status"] = "done"
+        result["steps"][-1]["rule"] = generated_rule
+
+        # Step 2: 验证（如果提供了 pcap_filename）
+        if pcap_filename:
+            result["steps"].append({"step": "validate", "status": "running"})
+            pcap_path = pcap_manager_db.get_pcap_path(pcap_filename)
+            if not pcap_path:
+                result["steps"][-1]["status"] = "skipped"
+                result["steps"][-1]["reason"] = f"PCAP文件不存在: {pcap_filename}"
+            else:
+                pcap_dir = os.path.dirname(pcap_path)
+                rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
+                suricata_config = os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
+                log_dir = os.getenv('SURICATA_LOG_DIR', '/var/log/suricata')
+
+                current_rule = generated_rule
+                validation_result = None
+
+                for round_num in range(max_optimize_rounds + 1):
+                    validator = SuricataValidator.create_validator(rules_dir, suricata_config, log_dir)
+                    vr = validator.validate_rule(current_rule, pcap_dir)
+
+                    db.insert_validation_result(
+                        rule_id=rule_id,
+                        pcap_path=pcap_path,
+                        matched=vr['matched'],
+                        alert_count=vr['alert_count'],
+                        details=json.dumps(vr['details']),
+                        sid_stats=json.dumps(vr['sid_stats'])
+                    )
+                    validation_result = vr
+                    result["steps"][-1]["status"] = "done"
+                    result["steps"][-1]["matched"] = vr['matched']
+                    result["steps"][-1]["alert_count"] = vr['alert_count']
+
+                    # 如果验证成功或不需要优化，退出循环
+                    if vr['matched'] or not auto_optimize or round_num >= max_optimize_rounds:
+                        break
+
+                    # Step 3: 自动优化
+                    result["steps"].append({"step": f"optimize_round_{round_num + 1}", "status": "running"})
+                    opt_prompt = build_rule_optimization_prompt(
+                        current_rule,
+                        feedback="验证未匹配，请优化规则以提高检测率",
+                        validation_result=json.dumps(vr, ensure_ascii=False)
+                    )
+                    opt_response = llm_client.generate_text(opt_prompt, temperature=0.3, max_tokens=4096)
+
+                    if 'error' in opt_response or 'choices' not in opt_response:
+                        result["steps"][-1]["status"] = "failed"
+                        break
+
+                    optimized_rule = opt_response['choices'][0]['message']['content'].strip()
+                    db.update_rule(rule_id, optimized_rule)
+                    db.insert_optimization_history(
+                        rule_id=rule_id,
+                        original_rule=current_rule,
+                        optimized_rule=optimized_rule,
+                        feedback="agent自动优化",
+                        ai_suggestion=optimized_rule
+                    )
+                    result["optimize_history"].append({
+                        "round": round_num + 1,
+                        "original_rule": current_rule,
+                        "optimized_rule": optimized_rule
+                    })
+                    result["steps"][-1]["status"] = "done"
+                    result["steps"][-1]["optimized_rule"] = optimized_rule
+                    current_rule = optimized_rule
+                    result["final_rule"] = optimized_rule
+
+                    # 重新验证
+                    result["steps"].append({"step": "validate", "status": "running"})
+
+                result["validation_result"] = validation_result
+        else:
+            result["steps"].append({"step": "validate", "status": "skipped", "reason": "未提供pcap_filename"})
+
+        result["status"] = "completed"
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e), "status": "failed"}), 500
+
+
+@app.route('/api/agent/status', methods=['GET'])
+def agent_status():
+    """返回 Agent API 的基本信息和使用说明"""
+    return jsonify({
+        "name": "Suricata Rule Agent API",
+        "version": "1.0",
+        "description": "一次调用完成Suricata规则生成和自动化验证",
+        "auth_methods": [
+            "X-API-Key header: 使用 AGENT_API_KEY 环境变量配置的密钥",
+            "Authorization: Bearer <token>: 使用登录接口获取的token"
+        ],
+        "endpoints": {
+            "POST /api/agent/run": {
+                "description": "生成规则并可选验证",
+                "required": ["vuln_name", "vuln_description"],
+                "optional": ["vuln_type", "poc", "pcap_filename", "auto_optimize", "max_optimize_rounds"]
+            }
+        },
+        "example_request": {
+            "vuln_name": "用友NC SQL注入漏洞",
+            "vuln_description": "用友NC系统某接口存在SQL注入漏洞，攻击者可通过id参数注入恶意SQL语句",
+            "vuln_type": "SQL注入",
+            "poc": "GET /uapws/service/xxx?id=1' OR '1'='1",
+            "pcap_filename": "attack_traffic.pcap",
+            "auto_optimize": True,
+            "max_optimize_rounds": 2
+        }
+    })
+
+
 def build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc):
     """Build AI prompt for rule generation"""
     prompt = f"""你是一个Suricata规则编写专家。请根据以下漏洞信息生成一条Suricata规则。

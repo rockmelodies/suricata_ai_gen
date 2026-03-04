@@ -306,9 +306,8 @@ const handleValidate = async () => {
 }
 
 .rule-code {
-  background-color: #f5f7fa;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  background-color: #1e1e1e;
+  border-radius: 6px;
   padding: 16px;
   overflow-x: auto;
 }
@@ -316,9 +315,11 @@ const handleValidate = async () => {
 .rule-code pre {
   margin: 0;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
-  color: #303133;
+  color: #d4d4d4;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 @media (max-width: 768px) {

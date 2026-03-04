@@ -52,6 +52,10 @@
               <el-icon><Check /></el-icon>
               验证规则
             </el-button>
+            <el-button @click="$router.push('/agent')">
+              <el-icon><Connection /></el-icon>
+              Agent API
+            </el-button>
           </div>
         </el-card>
       </el-col>
@@ -77,7 +81,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, shallowRef } from 'vue'
-import { Document, User, Check, Setting, Plus, List, MagicStick } from '@element-plus/icons-vue'
+import { Document, User, Check, Setting, Plus, List, MagicStick, Connection } from '@element-plus/icons-vue'
 import { getRuleList } from '@/api/rules'
 import { getUserList } from '@/api/auth'
 
