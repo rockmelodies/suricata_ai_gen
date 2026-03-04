@@ -72,6 +72,11 @@ service.interceptors.response.use(
     return response.data
   },
   (error) => {
+    // 如果请求配置中设置了 skipAuthHandler，则不处理 401
+    if (error.config?.skipAuthHandler) {
+      return Promise.reject(error)
+    }
+
     if (error.response) {
       const status = error.response.status
       const message = error.response.data?.message || error.response.data?.error || '请求失败'

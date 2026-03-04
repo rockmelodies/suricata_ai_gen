@@ -13,7 +13,7 @@ export const register = (data: RegisterForm) => {
 
 // 获取当前用户信息
 export const getCurrentUser = () => {
-  return request.get<any, User>('/auth/me')
+  return request.get<any, User>('/auth/me', { skipAuthHandler: true } as any)
 }
 
 // 获取用户列表
