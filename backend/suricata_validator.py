@@ -198,9 +198,10 @@ class SuricataValidator:
                 # Execute suricata with rule file and pcap
                 # For security, we'll call a separate script with elevated privileges if needed
                 cmd = []
-                
+
                 # Check if we're running as root to determine execution method
-                if os.geteuid() == 0:
+                is_root = (not self.is_windows) and (os.geteuid() == 0)
+                if is_root:
                     # We're already running with elevated privileges
                     cmd = suricata_cmd + [
                         '-S', rule_file,
@@ -271,7 +272,7 @@ class SuricataValidator:
                 
                 # Store the command for debugging
                 result["execution_details"]["executed_command"] = ' '.join([f'"{arg}"' if ' ' in arg else arg for arg in cmd])
-                result["execution_details"]["running_with_sudo_helper"] = (os.geteuid() != 0)
+                result["execution_details"]["running_with_sudo_helper"] = (not self.is_windows) and (os.geteuid() != 0)
                 
                 if proc.returncode != 0:
                     result["error"] = f"Suricata执行失败: {proc.stderr}"

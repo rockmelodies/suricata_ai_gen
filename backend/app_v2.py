@@ -15,7 +15,11 @@ except ImportError as e:
     sys.exit(1)
 
 import json
-from datetime import datetime
+import hmac
+import hashlib
+import base64
+import secrets
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -43,6 +47,38 @@ except ImportError as e:
 
 app = Flask(__name__)
 CORS(app)
+
+# JWT secret key - load from env or generate a stable one
+JWT_SECRET = os.getenv('JWT_SECRET_KEY') or os.getenv('SECRET_KEY', secrets.token_hex(32))
+JWT_EXPIRE_HOURS = int(os.getenv('JWT_EXPIRE_HOURS', '24'))
+
+
+def _create_token(user_id: int) -> str:
+    """Create a simple HMAC-signed token"""
+    expire = int((datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)).timestamp())
+    payload = f"{user_id}:{expire}"
+    sig = hmac.new(JWT_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    raw = f"{payload}:{sig}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+
+def _verify_token(token: str):
+    """Verify token and return user_id, or None if invalid"""
+    try:
+        raw = base64.urlsafe_b64decode(token.encode()).decode()
+        parts = raw.rsplit(':', 1)
+        if len(parts) != 2:
+            return None
+        payload, sig = parts
+        expected_sig = hmac.new(JWT_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        user_id_str, expire_str = payload.split(':', 1)
+        if int(expire_str) < int(datetime.now(timezone.utc).timestamp()):
+            return None
+        return int(user_id_str)
+    except Exception:
+        return None
 
 # Initialize components
 db = Database(DB_PATH)
@@ -98,6 +134,9 @@ def generate_rule():
         )
         
         # Extract generated rule from AI response
+        if 'error' in ai_response:
+            return jsonify({"error": f"AI调用失败: {ai_response['error']}"}), 502
+
         if 'choices' in ai_response and len(ai_response['choices']) > 0:
             generated_rule = ai_response['choices'][0]['message']['content'].strip()
             
@@ -147,6 +186,9 @@ def optimize_rule():
         )
         
         # Extract optimized rule
+        if 'error' in ai_response:
+            return jsonify({"error": f"AI调用失败: {ai_response['error']}"}), 502
+
         if 'choices' in ai_response and len(ai_response['choices']) > 0:
             optimized_rule = ai_response['choices'][0]['message']['content'].strip()
             
@@ -463,7 +505,7 @@ def login():
                 "success": True,
                 "message": "登录成功",
                 "user": safe_user,
-                "access_token": f"fake_token_for_{user['id']}"  # 实际应用中应生成真实JWT
+                "access_token": _create_token(user['id'])
             })
         else:
             return jsonify({"error": "用户名或密码错误"}), 401
@@ -613,19 +655,17 @@ def check_suricata():
 
 @app.route('/api/auth/me', methods=['GET'])
 def get_current_user():
-    """Get current user info (mock implementation)"""
+    """Get current user info"""
     try:
-        # 这里应该验证token，为了简单起见，我们返回默认admin用户
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({"error": "未授权"}), 401
-        
-        # 简单解析token以获取用户ID
+
         token = auth_header.split(' ')[1]
-        if not token.startswith('fake_token_for_'):
-            return jsonify({"error": "无效的令牌"}), 401
-        
-        user_id = int(token.replace('fake_token_for_', ''))
+        user_id = _verify_token(token)
+        if user_id is None:
+            return jsonify({"error": "无效或已过期的令牌"}), 401
+
         user = user_model.get_by_id(user_id)
         if user:
             safe_user = user_model.to_safe_dict(user)
@@ -648,6 +688,11 @@ def list_users():
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({"error": "未授权"}), 401
+
+        token = auth_header.split(' ')[1]
+        user_id = _verify_token(token)
+        if user_id is None:
+            return jsonify({"error": "无效或已过期的令牌"}), 401
         
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 20))
@@ -773,7 +818,9 @@ def build_rule_optimization_prompt(current_rule, feedback, validation_result):
 
 if __name__ == '__main__':
     # Initialize database and ensure directory exists
-    os.makedirs(os.path.dirname(db.db_path), exist_ok=True)
+    db_dir = os.path.dirname(db.db_path)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
     db.init_db()
     
     # Check if debug mode is enabled via environment variable

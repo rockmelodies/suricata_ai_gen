@@ -13,14 +13,25 @@ export const useUserStore = defineStore('user', () => {
   // 用于防止 checkAuth 重复执行
   let checkAuthPromise: Promise<boolean> | null = null
 
-  // 解析 JWT token 的过期时间（本地检测，不发请求）
-  const isTokenExpired = (jwtToken: string): boolean => {
+  // 解析 token 的过期时间（本地检测，不发请求）
+  // 支持自定义格式: base64(user_id:expire:sig)
+  const isTokenExpired = (tokenStr: string): boolean => {
     try {
-      const payload = JSON.parse(atob(jwtToken.split('.')[1]))
-      // exp 为 Unix 秒时间戳
+      // 尝试自定义格式: base64(user_id:expire:sig)
+      const decoded = atob(tokenStr.replace(/-/g, '+').replace(/_/g, '/'))
+      const parts = decoded.split(':')
+      if (parts.length >= 2) {
+        const expire = parseInt(parts[1])
+        if (!isNaN(expire)) {
+          return expire * 1000 < Date.now()
+        }
+      }
+      // 尝试 JWT 格式
+      const payload = JSON.parse(atob(tokenStr.split('.')[1]))
       return payload.exp ? payload.exp * 1000 < Date.now() : false
     } catch {
-      return true // 解析失败认为已过期
+      // 解析失败时不认为过期，让服务端验证
+      return false
     }
   }
 
