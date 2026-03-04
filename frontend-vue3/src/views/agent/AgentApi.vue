@@ -9,7 +9,7 @@
         </div>
       </template>
       <el-alert
-        title="Agent API 允许外部系统通过一次 HTTP 调用完成：规则生成 → 自动验证 → 自动优化的完整流程"
+        title="Agent API 允许外部系统通过一次 HTTP 调用完成：规则生成 → 自动验证 → 最多3次自动修复 → 结果写入数据库（合格/不合格）"
         type="info"
         :closable="false"
         style="margin-bottom: 16px"
@@ -118,9 +118,23 @@
       <template #header>
         <div class="card-header">
           <span>📊 执行结果</span>
-          <el-tag :type="agentResult.status === 'completed' ? 'success' : 'danger'" size="large">
-            {{ agentResult.status === 'completed' ? '✅ 完成' : '❌ 失败' }}
-          </el-tag>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <el-tag
+              v-if="agentResult.final_status === 'validated'"
+              type="success" size="large"
+            >✅ 验证合格，已入库</el-tag>
+            <el-tag
+              v-else-if="agentResult.final_status === 'failed_validation'"
+              type="danger" size="large"
+            >❌ 验证不合格，待人工审核</el-tag>
+            <el-tag
+              v-else-if="agentResult.final_status === 'draft'"
+              type="info" size="large"
+            >📝 已生成，未验证</el-tag>
+            <el-tag :type="agentResult.status === 'completed' ? 'success' : 'danger'" size="small">
+              {{ agentResult.status === 'completed' ? '完成' : '失败' }}
+            </el-tag>
+          </div>
         </div>
       </template>
 

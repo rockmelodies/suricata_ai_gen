@@ -802,13 +802,13 @@ def agent_run():
         result["steps"][-1]["status"] = "done"
         result["steps"][-1]["rule"] = generated_rule
 
-        # Step 2: 验证（如果提供了 pcap_filename）
+        # Step 2: 验证+修复循环（如果提供了 pcap_filename）
+        MAX_FIX_ROUNDS = 3
         if pcap_filename:
-            result["steps"].append({"step": "validate", "status": "running"})
             pcap_path = pcap_manager_db.get_pcap_path(pcap_filename)
             if not pcap_path:
-                result["steps"][-1]["status"] = "skipped"
-                result["steps"][-1]["reason"] = f"PCAP文件不存在: {pcap_filename}"
+                result["steps"].append({"step": "validate", "status": "skipped", "reason": f"PCAP文件不存在: {pcap_filename}"})
+                result["final_status"] = "draft"
             else:
                 pcap_dir = os.path.dirname(pcap_path)
                 rules_dir = os.getenv('SURICATA_RULES_DIR', '/var/lib/suricata/rules')
@@ -817,8 +817,14 @@ def agent_run():
 
                 current_rule = generated_rule
                 validation_result = None
+                fix_round = 0
+                final_status = 'draft'
 
-                for round_num in range(max_optimize_rounds + 1):
+                while True:
+                    # 执行验证
+                    step_name = 'validate' if fix_round == 0 else f'validate_after_fix_{fix_round}'
+                    result["steps"].append({"step": step_name, "status": "running"})
+
                     validator = SuricataValidator.create_validator(rules_dir, suricata_config, log_dir)
                     vr = validator.validate_rule(current_rule, pcap_dir)
 
@@ -831,25 +837,40 @@ def agent_run():
                         sid_stats=json.dumps(vr['sid_stats'])
                     )
                     validation_result = vr
-                    result["steps"][-1]["status"] = "done"
-                    result["steps"][-1]["matched"] = vr['matched']
-                    result["steps"][-1]["alert_count"] = vr['alert_count']
+                    result["steps"][-1].update({
+                        "status": "done",
+                        "matched": vr['matched'],
+                        "alert_count": vr['alert_count']
+                    })
 
-                    # 如果验证成功或不需要优化，退出循环
-                    if vr['matched'] or not auto_optimize or round_num >= max_optimize_rounds:
+                    if vr['matched']:
+                        # 验证通过，写入数据库并标记合格
+                        final_status = 'validated'
+                        db.update_rule(rule_id, current_rule, status='validated')
                         break
 
-                    # Step 3: 自动优化
-                    result["steps"].append({"step": f"optimize_round_{round_num + 1}", "status": "running"})
+                    if fix_round >= MAX_FIX_ROUNDS:
+                        # 超过最大修复次数，标记不合格
+                        final_status = 'failed_validation'
+                        db.update_rule(rule_id, current_rule, status='failed_validation')
+                        break
+
+                    # 尝试修复
+                    fix_round += 1
+                    result["steps"].append({"step": f"fix_round_{fix_round}", "status": "running"})
+
                     opt_prompt = build_rule_optimization_prompt(
                         current_rule,
-                        feedback="验证未匹配，请优化规则以提高检测率",
+                        feedback=f"第{fix_round}次修复：验证未匹配，请优化规则以提高检测率",
                         validation_result=json.dumps(vr, ensure_ascii=False)
                     )
                     opt_response = llm_client.generate_text(opt_prompt, temperature=0.3, max_tokens=4096)
 
                     if 'error' in opt_response or 'choices' not in opt_response:
                         result["steps"][-1]["status"] = "failed"
+                        result["steps"][-1]["error"] = opt_response.get('error', 'AI修复失败')
+                        final_status = 'failed_validation'
+                        db.update_rule(rule_id, current_rule, status='failed_validation')
                         break
 
                     optimized_rule = opt_response['choices'][0]['message']['content'].strip()
@@ -858,25 +879,27 @@ def agent_run():
                         rule_id=rule_id,
                         original_rule=current_rule,
                         optimized_rule=optimized_rule,
-                        feedback="agent自动优化",
+                        feedback=f"agent第{fix_round}次自动修复",
                         ai_suggestion=optimized_rule
                     )
                     result["optimize_history"].append({
-                        "round": round_num + 1,
+                        "round": fix_round,
                         "original_rule": current_rule,
                         "optimized_rule": optimized_rule
                     })
-                    result["steps"][-1]["status"] = "done"
-                    result["steps"][-1]["optimized_rule"] = optimized_rule
+                    result["steps"][-1].update({
+                        "status": "done",
+                        "optimized_rule": optimized_rule
+                    })
                     current_rule = optimized_rule
                     result["final_rule"] = optimized_rule
 
-                    # 重新验证
-                    result["steps"].append({"step": "validate", "status": "running"})
-
                 result["validation_result"] = validation_result
+                result["final_status"] = final_status
+                result["fix_rounds"] = fix_round
         else:
             result["steps"].append({"step": "validate", "status": "skipped", "reason": "未提供pcap_filename"})
+            result["final_status"] = "draft"
 
         result["status"] = "completed"
         return jsonify(result)
