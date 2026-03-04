@@ -92,9 +92,8 @@ router.beforeEach(async (to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - Suricata规则生成工具` : 'Suricata规则生成工具'
 
   // 等待认证初始化完成（首次加载时）
-  if (!userStore.isAuthInitialized) {
-    await userStore.checkAuth()
-  }
+  // 使用 checkAuth 的返回值来判断登录状态，而不是依赖 isAuthInitialized
+  await userStore.checkAuth()
 
   // 检查是否需要登录
   if (to.meta.requiresAuth) {

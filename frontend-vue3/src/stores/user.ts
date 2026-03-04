@@ -10,6 +10,8 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = ref<boolean>(false)
   // 标记初始化是否完成（防止路由守卫在验证完成前跳转）
   const isAuthInitialized = ref<boolean>(false)
+  // 用于防止 checkAuth 重复执行
+  let checkAuthPromise: Promise<boolean> | null = null
 
   // 解析 JWT token 的过期时间（本地检测，不发请求）
   const isTokenExpired = (jwtToken: string): boolean => {
@@ -28,6 +30,7 @@ export const useUserStore = defineStore('user', () => {
     user.value = null
     isLoggedIn.value = false
     isAuthInitialized.value = false
+    checkAuthPromise = null
     localStorage.removeItem('access_token')
     localStorage.removeItem('user')
   }
@@ -65,12 +68,31 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 检查认证状态（应用启动时调用）
-  const checkAuth = async () => {
+  // 使用锁机制防止重复执行
+  const checkAuth = async (): Promise<boolean> => {
+    // 如果已经初始化完成，直接返回当前登录状态
+    if (isAuthInitialized.value) {
+      return isLoggedIn.value
+    }
+
+    // 如果有正在进行的检查，返回当前的 promise
+    if (checkAuthPromise) {
+      return checkAuthPromise
+    }
+
+    // 创建新的检查 promise
+    checkAuthPromise = doCheckAuth()
+    return checkAuthPromise
+  }
+
+  // 实际的认证检查逻辑
+  const doCheckAuth = async (): Promise<boolean> => {
     const storedToken = localStorage.getItem('access_token')
     const storedUser = localStorage.getItem('user')
 
     if (!storedToken) {
       isAuthInitialized.value = true
+      checkAuthPromise = null
       return false
     }
 
@@ -78,6 +100,7 @@ export const useUserStore = defineStore('user', () => {
     if (isTokenExpired(storedToken)) {
       clearAuth()
       isAuthInitialized.value = true
+      checkAuthPromise = null
       return false
     }
 
@@ -96,11 +119,13 @@ export const useUserStore = defineStore('user', () => {
       // 同步更新本地缓存的用户信息
       localStorage.setItem('user', JSON.stringify(userData))
       isAuthInitialized.value = true
+      checkAuthPromise = null
       return true
     } catch (error) {
       // Token 服务端已失效
       clearAuth()
       isAuthInitialized.value = true
+      checkAuthPromise = null
       return false
     }
   }
