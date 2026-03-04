@@ -433,7 +433,7 @@ alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; h
 
 【未授权访问/权限绕过】
 alert http any any -> any any (msg:"漏洞标题"; flow:established,to_server; http.uri; content:"请求uri的内容"; nocase; content:"参考这个op=GetUsersInfo套用吧"; nocase; http.header.raw; content:!"|0a|参考这个Authorization套用吧"; nocase; content:!"|0a|参考这个Cookie套用吧"; nocase; sid:XXXXXXX; rev:1;)
-
+如果有body体，在检测body体处，加上http.request_body;
 7. 重要注意事项:
    - 强制使用模版中pcre部分[^\r\n\x26]、load(\x5f|%5f)
    - pcre正则表达式中的匹配部分[^\r\n\x26]{0,100}(select|union|sleep|load(\x5f|\x255f)file|update|from|concat|where|outfile|count|waitfor|create|mysql|updatexml|insert|hextoraw|(-|%2d){2}|'|%27|#|%23)/Pi"; 等）不要修改，只替换参数名
