@@ -1,48 +1,30 @@
 <template>
   <div class="dashboard">
     <el-row :gutter="20">
-      <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <el-icon class="stat-icon" color="#409eff"><Document /></el-icon>
-            <div class="stat-content">
-              <div class="stat-title">规则总数</div>
-              <div class="stat-value">{{ stats.totalRules }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <el-icon class="stat-icon" color="#67c23a"><User /></el-icon>
-            <div class="stat-content">
-              <div class="stat-title">用户总数</div>
-              <div class="stat-value">{{ stats.totalUsers }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <el-icon class="stat-icon" color="#e6a23c"><Check /></el-icon>
-            <div class="stat-content">
-              <div class="stat-title">验证次数</div>
-              <div class="stat-value">{{ stats.totalValidations }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <el-icon class="stat-icon" color="#f56c6c"><Setting /></el-icon>
-            <div class="stat-content">
-              <div class="stat-title">优化次数</div>
-              <div class="stat-value">{{ stats.totalOptimizations }}</div>
-            </div>
-          </div>
+      <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6" v-for="stat in statCards" :key="stat.key">
+        <el-card shadow="hover" class="stat-card-wrap">
+          <el-skeleton :loading="loading" animated>
+            <template #template>
+              <div class="stat-card">
+                <el-skeleton-item variant="circle" style="width: 48px; height: 48px;" />
+                <div class="stat-content">
+                  <el-skeleton-item variant="text" style="width: 60px;" />
+                  <el-skeleton-item variant="h1" style="width: 80px; margin-top: 8px;" />
+                </div>
+              </div>
+            </template>
+            <template #default>
+              <div class="stat-card">
+                <el-icon class="stat-icon" :color="stat.color">
+                  <component :is="stat.icon" />
+                </el-icon>
+                <div class="stat-content">
+                  <div class="stat-title">{{ stat.title }}</div>
+                  <div class="stat-value">{{ stats[stat.key as keyof typeof stats] }}</div>
+                </div>
+              </div>
+            </template>
+          </el-skeleton>
         </el-card>
       </el-col>
     </el-row>
@@ -94,10 +76,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Document, User, Check, Setting, Plus, List } from '@element-plus/icons-vue'
+import { ref, onMounted, shallowRef } from 'vue'
+import { Document, User, Check, Setting, Plus, List, MagicStick } from '@element-plus/icons-vue'
 import { getRuleList } from '@/api/rules'
 import { getUserList } from '@/api/auth'
+
+const loading = ref(true)
+
+const statCards = [
+  { key: 'totalRules', title: '规则总数', color: '#409eff', icon: shallowRef(Document) },
+  { key: 'totalUsers', title: '用户总数', color: '#67c23a', icon: shallowRef(User) },
+  { key: 'totalValidations', title: '验证次数', color: '#e6a23c', icon: shallowRef(Check) },
+  { key: 'totalOptimizations', title: '优化次数', color: '#f56c6c', icon: shallowRef(Setting) }
+]
 
 const stats = ref({
   totalRules: 0,
@@ -108,15 +99,20 @@ const stats = ref({
 
 onMounted(async () => {
   try {
-    // 获取规则数量
-    const ruleRes: any = await getRuleList({ page: 1, per_page: 1 })
-    stats.value.totalRules = ruleRes.total || 0
-
-    // 获取用户数量
-    const userRes: any = await getUserList({ page: 1, per_page: 1 })
-    stats.value.totalUsers = userRes.total || 0
+    const [ruleRes, userRes]: any[] = await Promise.allSettled([
+      getRuleList({ page: 1, per_page: 1 }),
+      getUserList({ page: 1, per_page: 1 })
+    ])
+    if (ruleRes.status === 'fulfilled') {
+      stats.value.totalRules = ruleRes.value?.total ?? 0
+    }
+    if (userRes.status === 'fulfilled') {
+      stats.value.totalUsers = userRes.value?.total ?? 0
+    }
   } catch (error) {
     console.error('加载统计数据失败:', error)
+  } finally {
+    loading.value = false
   }
 })
 </script>
@@ -124,6 +120,14 @@ onMounted(async () => {
 <style scoped>
 .dashboard {
   padding: 20px;
+}
+
+.stat-card-wrap {
+  transition: transform 0.2s;
+}
+
+.stat-card-wrap:hover {
+  transform: translateY(-2px);
 }
 
 .stat-card {
@@ -134,6 +138,7 @@ onMounted(async () => {
 
 .stat-icon {
   font-size: 48px;
+  flex-shrink: 0;
 }
 
 .stat-content {
@@ -155,13 +160,14 @@ onMounted(async () => {
 .quick-actions {
   display: flex;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 768px) {
   .quick-actions {
     flex-direction: column;
   }
-  
+
   .quick-actions .el-button {
     width: 100%;
   }
