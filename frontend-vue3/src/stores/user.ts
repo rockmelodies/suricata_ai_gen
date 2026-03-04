@@ -124,7 +124,9 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       // 异步验证 token 是否在服务端有效
-      const userData = await getCurrentUser()
+      const res = await getCurrentUser() as any
+      // 后端返回 { success: true, user: {...} }，需要取 user 字段
+      const userData = res?.user ?? res
       user.value = userData
       isLoggedIn.value = true
       // 同步更新本地缓存的用户信息
