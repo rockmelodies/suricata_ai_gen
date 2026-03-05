@@ -21,6 +21,11 @@
         <el-table-column prop="key_preview" label="Key（已脱敏）" min-width="160">
           <template #default="{ row }">
             <code class="key-preview">{{ row.key_preview }}</code>
+            <el-button
+              size="small" type="primary" link
+              style="margin-left: 6px"
+              @click="copyKey(row.key)"
+            >复制</el-button>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" />
@@ -260,6 +265,15 @@ const copyText = async (text: string) => {
   ta.select()
   document.execCommand('copy')
   document.body.removeChild(ta)
+}
+
+const copyKey = async (key: string) => {
+  try {
+    await copyText(key)
+    ElMessage.success('Key 已复制到剪贴板')
+  } catch {
+    ElMessage.error('复制失败，请手动复制')
+  }
 }
 
 const copyNewKey = async () => {

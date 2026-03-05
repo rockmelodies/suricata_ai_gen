@@ -1003,7 +1003,6 @@ def agent_keys_list():
 
     keys_json = db.get_config('agent_api_keys')
     keys = json.loads(keys_json) if keys_json else []
-    # 脱敏：只显示前8位
     safe_keys = [
         {**k, "key_preview": k["key"][:8] + "****"}
         for k in keys
