@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, shallowRef } from 'vue'
+import { ref, onMounted, shallowRef, markRaw } from 'vue'
 import {
   Document, User, Check, Setting,
   Plus, List, MagicStick, Connection,
@@ -99,18 +99,18 @@ import { getUserList } from '@/api/auth'
 const loading = ref(true)
 
 const statCards = [
-  { key: 'totalRules',       title: '规则总数', color: '#409eff', bg: '#ecf5ff', icon: shallowRef(Document) },
-  { key: 'totalUsers',       title: '用户总数', color: '#67c23a', bg: '#f0f9eb', icon: shallowRef(User) },
-  { key: 'totalValidations', title: '验证次数', color: '#e6a23c', bg: '#fdf6ec', icon: shallowRef(Check) },
-  { key: 'totalOptimizations', title: '优化次数', color: '#f56c6c', bg: '#fef0f0', icon: shallowRef(Setting) }
+  { key: 'totalRules',         title: '规则总数', color: '#409eff', bg: '#ecf5ff', icon: markRaw(Document) },
+  { key: 'totalUsers',         title: '用户总数', color: '#67c23a', bg: '#f0f9eb', icon: markRaw(User) },
+  { key: 'totalValidations',   title: '验证次数', color: '#e6a23c', bg: '#fdf6ec', icon: markRaw(Check) },
+  { key: 'totalOptimizations', title: '优化次数', color: '#f56c6c', bg: '#fef0f0', icon: markRaw(Setting) }
 ]
 
 const quickActions = [
-  { path: '/rules/create',   label: '生成验证一体化', desc: 'AI生成并自动验证', color: '#409eff', bg: '#ecf5ff', icon: shallowRef(MagicStick) },
-  { path: '/rules/generate', label: '生成规则',       desc: '使用AI生成规则',   color: '#67c23a', bg: '#f0f9eb', icon: shallowRef(Plus) },
-  { path: '/rules/list',     label: '规则列表',       desc: '查看所有规则',     color: '#606266', bg: '#f4f4f5', icon: shallowRef(List) },
-  { path: '/rules/validate', label: '验证规则',       desc: '使用PCAP验证',     color: '#e6a23c', bg: '#fdf6ec', icon: shallowRef(Check) },
-  { path: '/agent',          label: 'Agent API',      desc: '外部系统调用',     color: '#9b59b6', bg: '#f5eeff', icon: shallowRef(Connection) },
+  { path: '/rules/create',   label: '生成验证一体化', desc: 'AI生成并自动验证', color: '#409eff', bg: '#ecf5ff', icon: markRaw(MagicStick) },
+  { path: '/rules/generate', label: '生成规则',       desc: '使用AI生成规则',   color: '#67c23a', bg: '#f0f9eb', icon: markRaw(Plus) },
+  { path: '/rules/list',     label: '规则列表',       desc: '查看所有规则',     color: '#606266', bg: '#f4f4f5', icon: markRaw(List) },
+  { path: '/rules/validate', label: '验证规则',       desc: '使用PCAP验证',     color: '#e6a23c', bg: '#fdf6ec', icon: markRaw(Check) },
+  { path: '/agent',          label: 'Agent API',      desc: '外部系统调用',     color: '#9b59b6', bg: '#f5eeff', icon: markRaw(Connection) },
 ]
 
 const stats = ref({
