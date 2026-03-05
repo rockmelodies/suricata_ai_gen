@@ -58,6 +58,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Agent API', requiresAuth: true }
       },
       {
+        path: 'agent/manage',
+        name: 'AgentManage',
+        component: () => import('@/views/agent/AgentManage.vue'),
+        meta: { title: 'Agent 管理', requiresAuth: true, requiresAdmin: true }
+      },
+      {
         path: 'users',
         name: 'Users',
         component: () => import('@/views/users/Manage.vue'),

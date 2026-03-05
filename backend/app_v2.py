@@ -735,10 +735,22 @@ def agent_run():
 
         authenticated = False
         if api_key_header:
-            # API Key 认证：与 JWT_SECRET 比对（或单独配置 AGENT_API_KEY）
+            # 先检查环境变量中的固定 key
             expected_key = os.getenv('AGENT_API_KEY') or JWT_SECRET
             if hmac.compare_digest(api_key_header, expected_key):
                 authenticated = True
+            else:
+                # 再检查数据库中动态生成的 key 列表
+                keys_json = db.get_config('agent_api_keys')
+                if keys_json:
+                    db_keys = json.loads(keys_json)
+                    for k in db_keys:
+                        if hmac.compare_digest(api_key_header, k.get('key', '')):
+                            authenticated = True
+                            # 更新最后使用时间
+                            k['last_used'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            db.set_config('agent_api_keys', json.dumps(db_keys))
+                            break
         elif auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
             if _verify_token(token) is not None:
@@ -964,6 +976,95 @@ def agent_status():
             "max_optimize_rounds": 3
         }
     })
+
+
+# ─── Agent Key 管理端点（仅管理员）─────────────────────────────────────────────
+
+def _require_admin(request):
+    """验证请求是否来自管理员，返回 user_id 或 None"""
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None
+    token = auth_header.split(' ')[1]
+    user_id = _verify_token(token)
+    if user_id is None:
+        return None
+    user = user_model.get_by_id(user_id)
+    if not user or user.get('role') != 'admin':
+        return None
+    return user_id
+
+
+@app.route('/api/agent/keys', methods=['GET'])
+def agent_keys_list():
+    """列出所有 Agent API Key（仅管理员）"""
+    if _require_admin(request) is None:
+        return jsonify({"error": "需要管理员权限"}), 403
+
+    keys_json = db.get_config('agent_api_keys')
+    keys = json.loads(keys_json) if keys_json else []
+    # 脱敏：只显示前8位
+    safe_keys = [
+        {**k, "key_preview": k["key"][:8] + "****"}
+        for k in keys
+    ]
+    return jsonify({"success": True, "keys": safe_keys})
+
+
+@app.route('/api/agent/keys', methods=['POST'])
+def agent_keys_create():
+    """生成新的 Agent API Key（仅管理员）"""
+    if _require_admin(request) is None:
+        return jsonify({"error": "需要管理员权限"}), 403
+
+    data = request.json or {}
+    label = data.get('label', '').strip() or f"key_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    new_key = secrets.token_urlsafe(32)
+    keys_json = db.get_config('agent_api_keys')
+    keys = json.loads(keys_json) if keys_json else []
+    keys.append({
+        "id": secrets.token_hex(8),
+        "label": label,
+        "key": new_key,
+        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "last_used": None
+    })
+    db.set_config('agent_api_keys', json.dumps(keys))
+    return jsonify({"success": True, "key": new_key, "label": label, "message": "请妥善保存，此后不再显示完整密钥"})
+
+
+@app.route('/api/agent/keys/<key_id>', methods=['DELETE'])
+def agent_keys_delete(key_id):
+    """删除指定 Agent API Key（仅管理员）"""
+    if _require_admin(request) is None:
+        return jsonify({"error": "需要管理员权限"}), 403
+
+    keys_json = db.get_config('agent_api_keys')
+    keys = json.loads(keys_json) if keys_json else []
+    original_len = len(keys)
+    keys = [k for k in keys if k['id'] != key_id]
+    if len(keys) == original_len:
+        return jsonify({"error": "Key不存在"}), 404
+    db.set_config('agent_api_keys', json.dumps(keys))
+    return jsonify({"success": True})
+
+
+@app.route('/api/agent/restart', methods=['POST'])
+def agent_restart():
+    """重启后端服务（仅管理员）"""
+    if _require_admin(request) is None:
+        return jsonify({"error": "需要管理员权限"}), 403
+
+    import threading
+    def _do_restart():
+        import time, subprocess
+        time.sleep(1)
+        # 用当前 Python 解释器重新执行自身
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+    threading.Thread(target=_do_restart, daemon=True).start()
+    return jsonify({"success": True, "message": "服务将在1秒后重启，请稍候重新连接"})
 
 
 def build_rule_generation_prompt(vuln_name, vuln_description, vuln_type, poc):

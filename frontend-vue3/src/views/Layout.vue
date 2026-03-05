@@ -36,6 +36,11 @@
           <span>Agent API</span>
         </el-menu-item>
 
+        <el-menu-item v-if="userStore.isAdmin()" index="/agent/manage">
+          <el-icon><Key /></el-icon>
+          <span>Agent 管理</span>
+        </el-menu-item>
+
         <el-menu-item v-if="userStore.isAdmin()" index="/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
@@ -122,7 +127,8 @@ import {
   Expand,
   Fold,
   Monitor,
-  Connection
+  Connection,
+  Key
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
