@@ -28,6 +28,20 @@
         <el-descriptions-item label="API Key 配置">
           在后端 <code>.env</code> 文件中设置 <code>AGENT_API_KEY=your_secret_key</code>
         </el-descriptions-item>
+        <el-descriptions-item v-if="agentConfigStatus" label="当前配置状态">
+          <el-tag
+            :type="agentConfigStatus.config_status?.agent_api_key_configured ? 'success' : 'warning'"
+            size="small" style="margin-right: 8px"
+          >
+            API Key {{ agentConfigStatus.config_status?.agent_api_key_configured ? '已配置' : '未配置' }}
+          </el-tag>
+          <el-tag
+            :type="agentConfigStatus.config_status?.suricata_available ? 'success' : 'danger'"
+            size="small"
+          >
+            Suricata {{ agentConfigStatus.config_status?.suricata_available ? '可用' : '不可用' }}
+          </el-tag>
+        </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -134,22 +148,37 @@
             <el-tag :type="agentResult.status === 'completed' ? 'success' : 'danger'" size="small">
               {{ agentResult.status === 'completed' ? '完成' : '失败' }}
             </el-tag>
+            <span v-if="agentResult.elapsed_seconds" class="elapsed-time">
+              ⏱ {{ agentResult.elapsed_seconds }}s
+            </span>
           </div>
         </div>
       </template>
 
-      <!-- 执行步骤 -->
+      <!-- 执行步骤 - 竖向时间线 -->
       <div class="steps-section">
         <div class="section-title">执行步骤</div>
-        <el-steps :space="200" finish-status="success" style="margin: 16px 0">
-          <el-step
+        <el-timeline style="margin: 12px 0 0 0">
+          <el-timeline-item
             v-for="step in agentResult.steps"
             :key="step.step"
-            :title="stepLabel(step.step)"
-            :status="stepStatus(step.status)"
-            :description="stepDesc(step)"
-          />
-        </el-steps>
+            :type="stepTimelineType(step.status)"
+            :hollow="step.status === 'skipped'"
+            size="normal"
+          >
+            <div class="step-item">
+              <span class="step-label">{{ stepLabel(step.step) }}</span>
+              <el-tag :type="stepTagType(step.status)" size="small" style="margin-left: 8px">
+                {{ stepStatusText(step.status) }}
+              </el-tag>
+              <span v-if="step.status === 'done' && step.matched !== undefined" class="step-desc">
+                {{ step.matched ? `✅ 匹配 ${step.alert_count} 条告警` : '❌ 未匹配' }}
+              </span>
+              <span v-if="step.reason" class="step-desc">{{ step.reason }}</span>
+              <span v-if="step.error" class="step-desc step-error">{{ step.error }}</span>
+            </div>
+          </el-timeline-item>
+        </el-timeline>
       </div>
 
       <el-divider />
@@ -195,18 +224,30 @@
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="优化历史" name="optimize" v-if="agentResult.optimize_history?.length">
+        <el-tab-pane label="修复历史" name="optimize" v-if="agentResult.optimize_history?.length">
           <el-timeline>
             <el-timeline-item
               v-for="(h, i) in agentResult.optimize_history"
               :key="i"
-              :timestamp="`第 ${h.round} 轮优化`"
+              :timestamp="`第 ${h.round} 次修复`"
               placement="top"
+              type="warning"
             >
               <el-card size="small">
-                <div class="rule-code small">
-                  <pre><code>{{ h.optimized_rule }}</code></pre>
-                </div>
+                <el-row :gutter="12">
+                  <el-col :span="12">
+                    <div class="diff-label">修复前</div>
+                    <div class="rule-code small">
+                      <pre><code>{{ h.original_rule }}</code></pre>
+                    </div>
+                  </el-col>
+                  <el-col :span="12">
+                    <div class="diff-label success">修复后</div>
+                    <div class="rule-code small">
+                      <pre><code>{{ h.optimized_rule }}</code></pre>
+                    </div>
+                  </el-col>
+                </el-row>
               </el-card>
             </el-timeline-item>
           </el-timeline>
@@ -256,6 +297,7 @@ const pcapList = ref<any[]>([])
 const agentResult = ref<any>(null)
 const resultTab = ref('rule')
 const exampleTab = ref('curl')
+const agentConfigStatus = ref<any>(null)
 
 const testForm = reactive({
   apiKey: '',
@@ -264,8 +306,8 @@ const testForm = reactive({
   vuln_description: '',
   poc: '',
   pcap_filename: '',
-  auto_optimize: false,
-  max_optimize_rounds: 2
+  auto_optimize: true,
+  max_optimize_rounds: 3
 })
 
 const paramDocs = [
@@ -274,30 +316,36 @@ const paramDocs = [
   { name: 'vuln_type', type: 'string', required: false, desc: '漏洞类型：SQL注入、命令注入、文件读取等' },
   { name: 'poc', type: 'string', required: false, desc: 'POC示例，提供后可生成更精准的规则' },
   { name: 'pcap_filename', type: 'string', required: false, desc: '已上传的PCAP文件名，不填则跳过验证步骤' },
-  { name: 'auto_optimize', type: 'boolean', required: false, desc: '验证未匹配时是否自动优化规则，默认 false' },
-  { name: 'max_optimize_rounds', type: 'integer', required: false, desc: '最大自动优化轮次，默认 2，最大 5' }
+  { name: 'auto_optimize', type: 'boolean', required: false, desc: '验证未匹配时是否自动修复规则，默认 true' },
+  { name: 'max_optimize_rounds', type: 'integer', required: false, desc: '最大自动修复轮次，默认 3，最大 5' }
 ]
 
 const stepLabel = (step: string) => {
   if (step === 'generate') return '生成规则'
-  if (step === 'validate') return '验证规则'
-  if (step.startsWith('optimize')) return `优化 ${step.replace('optimize_round_', '')} 轮`
+  if (step === 'validate') return '首次验证'
+  if (step.startsWith('validate_after_fix_')) return `第 ${step.replace('validate_after_fix_', '')} 次修复后验证`
+  if (step.startsWith('fix_round_')) return `第 ${step.replace('fix_round_', '')} 次 AI 修复`
+  if (step.startsWith('optimize_round_')) return `优化第 ${step.replace('optimize_round_', '')} 轮`
   return step
 }
 
-const stepStatus = (status: string) => {
+const stepTimelineType = (status: string) => {
   if (status === 'done') return 'success'
-  if (status === 'failed') return 'error'
-  if (status === 'running') return 'process'
-  return 'wait'
+  if (status === 'failed') return 'danger'
+  if (status === 'running') return 'primary'
+  return 'info'
 }
 
-const stepDesc = (step: any) => {
-  if (step.status === 'skipped') return step.reason || '已跳过'
-  if (step.step === 'validate' && step.status === 'done') {
-    return step.matched ? `匹配 ${step.alert_count} 条告警` : '未匹配'
-  }
-  return ''
+const stepTagType = (status: string) => {
+  if (status === 'done') return 'success'
+  if (status === 'failed') return 'danger'
+  if (status === 'skipped') return 'info'
+  return 'warning'
+}
+
+const stepStatusText = (status: string) => {
+  const map: Record<string, string> = { done: '完成', failed: '失败', running: '执行中', skipped: '跳过' }
+  return map[status] ?? status
 }
 
 const baseUrl = computed(() => window.location.origin)
@@ -341,6 +389,12 @@ onMounted(async () => {
     if (res.success) pcapList.value = res.pcaps
   } catch {}
   loadingPcaps.value = false
+
+  // 获取 agent 配置状态
+  try {
+    const res = await fetch('/api/agent/status')
+    agentConfigStatus.value = await res.json()
+  } catch {}
 })
 
 const handleRun = async () => {
@@ -399,7 +453,7 @@ const fillExample = () => {
 const handleReset = () => {
   Object.assign(testForm, {
     apiKey: '', vuln_name: '', vuln_type: '', vuln_description: '',
-    poc: '', pcap_filename: '', auto_optimize: false, max_optimize_rounds: 2
+    poc: '', pcap_filename: '', auto_optimize: true, max_optimize_rounds: 3
   })
   agentResult.value = null
 }
@@ -550,5 +604,45 @@ const copyPython = async () => {
 
 .copy-btn:hover {
   opacity: 1;
+}
+
+.elapsed-time {
+  font-size: 13px;
+  color: #909399;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.step-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.step-desc {
+  font-size: 12px;
+  color: #606266;
+  margin-left: 4px;
+}
+
+.step-error {
+  color: #f56c6c;
+}
+
+.diff-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #909399;
+  margin-bottom: 6px;
+}
+
+.diff-label.success {
+  color: #67c23a;
 }
 </style>

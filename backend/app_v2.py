@@ -753,8 +753,8 @@ def agent_run():
         vuln_type = data.get('vuln_type', '')
         poc = data.get('poc', '')
         pcap_filename = data.get('pcap_filename', '')
-        auto_optimize = data.get('auto_optimize', False)
-        max_optimize_rounds = min(int(data.get('max_optimize_rounds', 2)), 5)
+        auto_optimize = data.get('auto_optimize', True)
+        max_fix_rounds = min(int(data.get('max_optimize_rounds', 3)), 5)
 
         if not vuln_name or not vuln_description:
             return jsonify({"error": "缺少必要参数: vuln_name 和 vuln_description"}), 400
@@ -768,8 +768,12 @@ def agent_run():
             "validation_result": None,
             "optimize_history": [],
             "final_rule": None,
+            "final_status": "draft",
+            "fix_rounds": 0,
+            "elapsed_seconds": 0,
             "steps": []
         }
+        _start_time = datetime.now(timezone.utc)
 
         # Step 1: 生成规则
         result["steps"].append({"step": "generate", "status": "running"})
@@ -789,6 +793,11 @@ def agent_run():
             return jsonify(result), 500
 
         generated_rule = ai_response['choices'][0]['message']['content'].strip()
+        # 清洗 markdown 代码块（```suricata ... ``` 或 ``` ... ```）
+        import re as _re
+        _fence = _re.search(r'```(?:\w+)?\s*\n([\s\S]+?)\n```', generated_rule)
+        if _fence:
+            generated_rule = _fence.group(1).strip()
         rule_id = db.insert_rule(
             vuln_name=vuln_name,
             original_rule=generated_rule,
@@ -803,7 +812,6 @@ def agent_run():
         result["steps"][-1]["rule"] = generated_rule
 
         # Step 2: 验证+修复循环（如果提供了 pcap_filename）
-        MAX_FIX_ROUNDS = 3
         if pcap_filename:
             pcap_path = pcap_manager_db.get_pcap_path(pcap_filename)
             if not pcap_path:
@@ -849,8 +857,8 @@ def agent_run():
                         db.update_rule(rule_id, current_rule, status='validated')
                         break
 
-                    if fix_round >= MAX_FIX_ROUNDS:
-                        # 超过最大修复次数，标记不合格
+                    if not auto_optimize or fix_round >= max_fix_rounds:
+                        # 不启用自动修复，或超过最大修复次数，标记不合格
                         final_status = 'failed_validation'
                         db.update_rule(rule_id, current_rule, status='failed_validation')
                         break
@@ -874,6 +882,9 @@ def agent_run():
                         break
 
                     optimized_rule = opt_response['choices'][0]['message']['content'].strip()
+                    _fence2 = _re.search(r'```(?:\w+)?\s*\n([\s\S]+?)\n```', optimized_rule)
+                    if _fence2:
+                        optimized_rule = _fence2.group(1).strip()
                     db.update_rule(rule_id, optimized_rule)
                     db.insert_optimization_history(
                         rule_id=rule_id,
@@ -902,6 +913,7 @@ def agent_run():
             result["final_status"] = "draft"
 
         result["status"] = "completed"
+        result["elapsed_seconds"] = round((datetime.now(timezone.utc) - _start_time).total_seconds(), 1)
         return jsonify(result)
 
     except Exception as e:
@@ -910,21 +922,37 @@ def agent_run():
 
 @app.route('/api/agent/status', methods=['GET'])
 def agent_status():
-    """返回 Agent API 的基本信息和使用说明"""
+    """返回 Agent API 的基本信息和配置状态"""
+    agent_api_key_configured = bool(os.getenv('AGENT_API_KEY'))
+    suricata_config = os.getenv('SURICATA_CONFIG', '/etc/suricata/suricata.yaml')
+    import shutil
+    suricata_available = shutil.which('suricata') is not None
+
     return jsonify({
         "name": "Suricata Rule Agent API",
-        "version": "1.0",
-        "description": "一次调用完成Suricata规则生成和自动化验证",
+        "version": "1.1",
+        "description": "一次调用完成Suricata规则生成 → 验证 → 自动修复（最多N次）→ 结果入库",
+        "config_status": {
+            "agent_api_key_configured": agent_api_key_configured,
+            "suricata_available": suricata_available,
+            "suricata_config": suricata_config,
+            "llm_provider": os.getenv('LLM_PROVIDER', 'unknown')
+        },
         "auth_methods": [
             "X-API-Key header: 使用 AGENT_API_KEY 环境变量配置的密钥",
             "Authorization: Bearer <token>: 使用登录接口获取的token"
         ],
         "endpoints": {
             "POST /api/agent/run": {
-                "description": "生成规则并可选验证",
+                "description": "生成规则并可选验证，验证失败时自动修复",
                 "required": ["vuln_name", "vuln_description"],
                 "optional": ["vuln_type", "poc", "pcap_filename", "auto_optimize", "max_optimize_rounds"]
             }
+        },
+        "final_status_values": {
+            "validated": "验证通过，规则已入库",
+            "failed_validation": "经多次修复仍未通过，已入库待人工审核",
+            "draft": "未提供PCAP，仅生成规则未验证"
         },
         "example_request": {
             "vuln_name": "用友NC SQL注入漏洞",
@@ -933,7 +961,7 @@ def agent_status():
             "poc": "GET /uapws/service/xxx?id=1' OR '1'='1",
             "pcap_filename": "attack_traffic.pcap",
             "auto_optimize": True,
-            "max_optimize_rounds": 2
+            "max_optimize_rounds": 3
         }
     })
 

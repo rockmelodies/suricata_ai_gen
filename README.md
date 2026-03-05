@@ -56,6 +56,7 @@
 |------|------|------|
 | 🔐 **JWT认证** | 完整的用户认证和授权系统 | ✅ 已完成 |
 | 👥 **用户管理** | 用户注册、登录、权限管理 | ✅ 已完成 |
+| 🤖 **Agent API** | 外部一次调用完成生成→验证→修复，结果自动入库 | ✅ 已完成 |
 | 📖 **OpenAPI规范** | 符合OpenAPI 3.0标准，自动生成Swagger文档 | ✅ 已完成 |
 | 🎯 **RESTful API** | 基于Flask-RESTX的标准化API设计 | ✅ 已完成 |
 | 🔄 **前后端分离** | Vue3 + TypeScript + Element Plus现代化前端 | ✅ 已完成 |
@@ -404,8 +405,147 @@ FLASK_ENV=production
 | ✨ **生成规则** | 输入漏洞信息，使用AI生成Suricata规则 | 创建新检测规则 |
 | 📋 **规则列表** | 查看、管理、优化已生成的规则 | 规则管理和维护 |
 | ✅ **验证规则** | 使用PCAP文件验证规则有效性 | 规则测试和验证 |
+| 🤖 **Agent API** | 一次调用完成生成→验证→修复全流程，结果自动入库 | 外部系统集成、自动化流水线 |
 | 👥 **用户管理** | 管理系统用户（仅管理员） | 权限管理 |
 | ⚙️ **系统配置** | 配置系统参数 | 系统设置 |
+
+### 🤖 Agent API 使用指南
+
+Agent API 允许外部系统通过**一次 HTTP 调用**完成完整的规则生成→验证→自动修复流程，最终将结果写入数据库并标记状态。
+
+#### 工作流程
+
+```
+调用 /api/agent/run
+        │
+        ▼
+   AI 生成规则
+        │
+        ▼
+   Suricata 验证（PCAP）
+        │
+   ┌────┴────┐
+   │ 有告警？ │
+   └────┬────┘
+        │ 是 → 写入DB，标记"验证合格" ✅
+        │ 否 → AI 修复规则（最多3次）
+              │
+              └─ 3次后仍失败 → 写入DB，标记"验证不合格，待人工审核" ❌
+```
+
+#### 第一步：获取 Agent API Key
+
+**方式一（推荐）：配置专用 API Key**
+
+在后端 `.env` 文件中添加：
+
+```bash
+AGENT_API_KEY=your_secret_key_here
+```
+
+重启后端服务后生效。调用时在请求头中携带：
+
+```
+X-API-Key: your_secret_key_here
+```
+
+**方式二：使用登录 Token**
+
+先调用登录接口获取 token，再用 Bearer 方式调用：
+
+```bash
+# 1. 登录获取 token
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# 响应中的 token 字段即为 Bearer token
+```
+
+调用时在请求头中携带：
+
+```
+Authorization: Bearer <上一步获取的token>
+```
+
+#### 第二步：调用 Agent API
+
+```bash
+curl -X POST http://localhost:5000/api/agent/run \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_secret_key_here" \
+  -d '{
+    "vuln_name": "用友NC SQL注入漏洞",
+    "vuln_type": "SQL注入",
+    "vuln_description": "攻击者通过构造恶意SQL语句绕过认证，获取数据库敏感信息",
+    "poc": "GET /servlet/~ic/bsh.servlet.BshServlet HTTP/1.1",
+    "pcap_filename": "test_attack.pcap",
+    "auto_optimize": true
+  }'
+```
+
+#### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `vuln_name` | string | ✅ | 漏洞名称 |
+| `vuln_description` | string | ✅ | 漏洞详细描述 |
+| `vuln_type` | string | 否 | 漏洞类型（SQL注入、命令注入等） |
+| `poc` | string | 否 | POC示例，提供后生成规则更准确 |
+| `pcap_filename` | string | 否 | 已上传的PCAP文件名，不填则只生成规则不验证 |
+| `auto_optimize` | bool | 否 | 是否启用自动修复（默认 true） |
+
+#### 响应示例
+
+```json
+{
+  "status": "completed",
+  "final_status": "validated",
+  "rule_id": 42,
+  "final_rule": "alert http any any -> any any (msg:\"SQL Injection\"; ...)",
+  "fix_rounds": 0,
+  "validation_result": {
+    "matched": true,
+    "alert_count": 3,
+    "sid_stats": {"1000001": 3}
+  },
+  "optimize_history": [],
+  "steps": [
+    {"step": "generate", "status": "done"},
+    {"step": "validate", "status": "done", "matched": true, "alert_count": 3}
+  ]
+}
+```
+
+`final_status` 取值说明：
+
+| 值 | 含义 |
+|----|------|
+| `validated` | 验证通过，规则已入库，标记"验证合格" |
+| `failed_validation` | 经3次修复仍未通过，已入库，标记"待人工审核" |
+| `draft` | 未提供PCAP，仅生成规则未验证 |
+
+#### Python 调用示例
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:5000/api/agent/run",
+    headers={"X-API-Key": "your_secret_key_here"},
+    json={
+        "vuln_name": "用友NC SQL注入漏洞",
+        "vuln_description": "攻击者通过构造恶意SQL语句绕过认证",
+        "pcap_filename": "test_attack.pcap"
+    }
+)
+
+result = response.json()
+print(f"最终状态: {result['final_status']}")
+print(f"生成规则: {result['final_rule']}")
+```
+
+---
 
 ### 🔌 API使用示例
 
