@@ -247,9 +247,24 @@ const handleRestart = async () => {
   }
 }
 
+const copyText = async (text: string) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'
+  document.body.appendChild(ta)
+  ta.focus()
+  ta.select()
+  document.execCommand('copy')
+  document.body.removeChild(ta)
+}
+
 const copyNewKey = async () => {
   try {
-    await navigator.clipboard.writeText(newKeyValue.value)
+    await copyText(newKeyValue.value)
     ElMessage.success('已复制到剪贴板')
   } catch {
     ElMessage.error('复制失败，请手动复制')

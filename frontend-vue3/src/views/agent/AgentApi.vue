@@ -458,23 +458,38 @@ const handleReset = () => {
   agentResult.value = null
 }
 
+const copyText = async (text: string) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'
+  document.body.appendChild(ta)
+  ta.focus()
+  ta.select()
+  document.execCommand('copy')
+  document.body.removeChild(ta)
+}
+
 const copyRule = async (rule: string) => {
   try {
-    await navigator.clipboard.writeText(rule)
+    await copyText(rule)
     ElMessage.success('已复制到剪贴板')
   } catch { ElMessage.error('复制失败') }
 }
 
 const copyCurl = async () => {
   try {
-    await navigator.clipboard.writeText(curlExample.value)
+    await copyText(curlExample.value)
     ElMessage.success('已复制')
   } catch { ElMessage.error('复制失败') }
 }
 
 const copyPython = async () => {
   try {
-    await navigator.clipboard.writeText(pythonExample.value)
+    await copyText(pythonExample.value)
     ElMessage.success('已复制')
   } catch { ElMessage.error('复制失败') }
 }
