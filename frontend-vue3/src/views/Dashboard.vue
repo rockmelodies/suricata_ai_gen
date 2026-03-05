@@ -15,7 +15,7 @@
             </template>
             <template #default>
               <div class="stat-card">
-                <el-icon class="stat-icon" :color="stat.color">
+                <el-icon class="stat-icon" :size="48" :color="stat.color">
                   <component :is="stat.icon" />
                 </el-icon>
                 <div class="stat-content">
@@ -29,11 +29,13 @@
       </el-col>
     </el-row>
 
-    <el-row :gutter="20" style="margin-top: 20px">
+    <el-row :gutter="16" style="margin-top: 20px">
       <el-col :xs="12" :sm="8" :md="8" :lg="24/5" :xl="24/5" v-for="action in quickActions" :key="action.path">
         <el-card shadow="hover" class="action-card" @click="$router.push(action.path)">
           <div class="action-inner">
-            <el-icon class="action-icon" :color="action.color"><component :is="action.icon" /></el-icon>
+            <div class="action-icon-wrap" :style="{ background: action.bg }">
+              <el-icon :size="26" :color="action.color"><component :is="action.icon" /></el-icon>
+            </div>
             <div class="action-label">{{ action.label }}</div>
             <div class="action-desc">{{ action.desc }}</div>
           </div>
@@ -75,11 +77,11 @@ const statCards = [
 ]
 
 const quickActions = [
-  { path: '/rules/create', label: '生成验证一体化', desc: 'AI生成并自动验证', color: '#409eff', icon: shallowRef(MagicStick) },
-  { path: '/rules/generate', label: '生成规则', desc: '使用AI生成规则', color: '#67c23a', icon: shallowRef(Plus) },
-  { path: '/rules/list', label: '规则列表', desc: '查看所有规则', color: '#909399', icon: shallowRef(List) },
-  { path: '/rules/validate', label: '验证规则', desc: '使用PCAP验证', color: '#e6a23c', icon: shallowRef(Check) },
-  { path: '/agent', label: 'Agent API', desc: '外部系统调用', color: '#9b59b6', icon: shallowRef(Connection) },
+  { path: '/rules/create', label: '生成验证一体化', desc: 'AI生成并自动验证', color: '#409eff', bg: '#ecf5ff', icon: shallowRef(MagicStick) },
+  { path: '/rules/generate', label: '生成规则', desc: '使用AI生成规则', color: '#67c23a', bg: '#f0f9eb', icon: shallowRef(Plus) },
+  { path: '/rules/list', label: '规则列表', desc: '查看所有规则', color: '#606266', bg: '#f4f4f5', icon: shallowRef(List) },
+  { path: '/rules/validate', label: '验证规则', desc: '使用PCAP验证', color: '#e6a23c', bg: '#fdf6ec', icon: shallowRef(Check) },
+  { path: '/agent', label: 'Agent API', desc: '外部系统调用', color: '#9b59b6', bg: '#f5eeff', icon: shallowRef(Connection) },
 ]
 
 const stats = ref({
@@ -129,8 +131,12 @@ onMounted(async () => {
 }
 
 .stat-icon {
-  font-size: 48px;
   flex-shrink: 0;
+}
+
+:deep(.stat-icon svg) {
+  width: 48px;
+  height: 48px;
 }
 
 .stat-content {
@@ -167,6 +173,16 @@ onMounted(async () => {
   padding: 8px 0;
   gap: 6px;
   text-align: center;
+}
+
+.action-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .action-icon {

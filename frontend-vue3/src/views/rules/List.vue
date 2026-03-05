@@ -384,7 +384,7 @@ const handleResize = () => {
   const windowHeight = window.innerHeight
   
   isMobile.value = windowWidth < 768
-  tableHeight.value = windowHeight > 800 ? 500 : windowHeight - 400
+  tableHeight.value = windowHeight > 800 ? windowHeight - 320 : windowHeight - 360
 }
 
 onMounted(() => {
@@ -609,6 +609,12 @@ const handleSizeChange = (size: number) => {
 <style scoped>
 .rule-list-container {
   padding: 20px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.rule-list-container > .el-card {
+  height: 100%;
 }
 
 .list-header {
