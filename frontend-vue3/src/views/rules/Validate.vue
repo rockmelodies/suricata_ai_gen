@@ -77,19 +77,17 @@
         </el-form-item>
 
         <el-form-item>
-          <el-button
-            type="primary"
-            :loading="validating"
-            @click="handleValidate"
-          >
-            <el-icon v-if="!validating"><Check /></el-icon>
-            {{ validating ? '验证中...' : '开始验证' }}
-          </el-button>
-          <el-button @click="handleReset">重置</el-button>
-          <el-button @click="handleLoadFromList">
-            <el-icon><List /></el-icon>
-            从列表加载
-          </el-button>
+          <div class="form-actions">
+            <el-button type="primary" :loading="validating" @click="handleValidate">
+              <el-icon v-if="!validating"><Check /></el-icon>
+              {{ validating ? '验证中...' : '开始验证' }}
+            </el-button>
+            <el-button @click="handleReset">重置</el-button>
+            <el-button @click="handleLoadFromList">
+              <el-icon><List /></el-icon>
+              从列表加载
+            </el-button>
+          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -749,6 +747,12 @@ const toggleSelectAll = () => {
   margin-top: 4px;
   font-size: 12px;
   color: #909399;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .result-header {

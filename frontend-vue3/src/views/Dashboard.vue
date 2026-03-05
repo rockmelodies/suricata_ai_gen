@@ -30,32 +30,12 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :span="24">
-        <el-card>
-          <template #header>
-            <span>🚀 快速开始</span>
-          </template>
-          <div class="quick-actions">
-            <el-button type="primary" @click="$router.push('/rules/create')">
-              <el-icon><MagicStick /></el-icon>
-              生成验证一体化
-            </el-button>
-            <el-button type="success" @click="$router.push('/rules/generate')">
-              <el-icon><Plus /></el-icon>
-              生成规则
-            </el-button>
-            <el-button type="info" @click="$router.push('/rules/list')">
-              <el-icon><List /></el-icon>
-              规则列表
-            </el-button>
-            <el-button type="warning" @click="$router.push('/rules/validate')">
-              <el-icon><Check /></el-icon>
-              验证规则
-            </el-button>
-            <el-button @click="$router.push('/agent')">
-              <el-icon><Connection /></el-icon>
-              Agent API
-            </el-button>
+      <el-col :xs="12" :sm="8" :md="8" :lg="24/5" :xl="24/5" v-for="action in quickActions" :key="action.path">
+        <el-card shadow="hover" class="action-card" @click="$router.push(action.path)">
+          <div class="action-inner">
+            <el-icon class="action-icon" :color="action.color"><component :is="action.icon" /></el-icon>
+            <div class="action-label">{{ action.label }}</div>
+            <div class="action-desc">{{ action.desc }}</div>
           </div>
         </el-card>
       </el-col>
@@ -92,6 +72,14 @@ const statCards = [
   { key: 'totalUsers', title: '用户总数', color: '#67c23a', icon: shallowRef(User) },
   { key: 'totalValidations', title: '验证次数', color: '#e6a23c', icon: shallowRef(Check) },
   { key: 'totalOptimizations', title: '优化次数', color: '#f56c6c', icon: shallowRef(Setting) }
+]
+
+const quickActions = [
+  { path: '/rules/create', label: '生成验证一体化', desc: 'AI生成并自动验证', color: '#409eff', icon: shallowRef(MagicStick) },
+  { path: '/rules/generate', label: '生成规则', desc: '使用AI生成规则', color: '#67c23a', icon: shallowRef(Plus) },
+  { path: '/rules/list', label: '规则列表', desc: '查看所有规则', color: '#909399', icon: shallowRef(List) },
+  { path: '/rules/validate', label: '验证规则', desc: '使用PCAP验证', color: '#e6a23c', icon: shallowRef(Check) },
+  { path: '/agent', label: 'Agent API', desc: '外部系统调用', color: '#9b59b6', icon: shallowRef(Connection) },
 ]
 
 const stats = ref({
@@ -159,6 +147,41 @@ onMounted(async () => {
   font-size: 28px;
   font-weight: bold;
   color: #303133;
+}
+
+.action-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-bottom: 0;
+}
+
+.action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.action-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 6px;
+  text-align: center;
+}
+
+.action-icon {
+  font-size: 32px;
+}
+
+.action-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.action-desc {
+  font-size: 12px;
+  color: #909399;
 }
 
 .quick-actions {

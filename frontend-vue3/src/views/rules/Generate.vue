@@ -61,15 +61,17 @@
         </el-form-item>
 
         <el-form-item>
-          <el-button
-            type="primary"
-            :loading="generating"
-            @click="handleGenerate"
-          >
-            <el-icon v-if="!generating"><MagicStick /></el-icon>
-            {{ generating ? '生成中...' : '🤖 AI生成规则' }}
-          </el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <div class="form-actions">
+            <el-button
+              type="primary"
+              :loading="generating"
+              @click="handleGenerate"
+            >
+              <el-icon v-if="!generating"><MagicStick /></el-icon>
+              {{ generating ? '生成中...' : 'AI 生成规则' }}
+            </el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -245,9 +247,19 @@ const handleReset = () => {
 
 const handleCopy = async () => {
   try {
-    await navigator.clipboard.writeText(generatedRule.value)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(generatedRule.value)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = generatedRule.value
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'
+      document.body.appendChild(ta)
+      ta.focus(); ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
     ElMessage.success('已复制到剪贴板')
-  } catch (error) {
+  } catch {
     ElMessage.error('复制失败')
   }
 }
@@ -293,6 +305,11 @@ const handleValidate = async () => {
   align-items: center;
   font-size: 16px;
   font-weight: 500;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .result-header {

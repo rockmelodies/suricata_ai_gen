@@ -83,14 +83,10 @@
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column prop="updated_at" label="更新时间" width="180" />
-        <el-table-column label="操作"  fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button-group class="button-group">
-              <el-button
-                type="primary"
-                size="small"
-                @click="handleEdit(row)"
-              >
+            <div class="table-actions">
+              <el-button type="primary" size="small" @click="handleEdit(row)">
                 <el-icon><Edit /></el-icon>
                 <span v-if="!isMobile">编辑</span>
               </el-button>
@@ -103,11 +99,7 @@
                 <el-icon><component :is="row.status === 'active' ? 'CircleCheck' : 'CircleCheckFilled'" /></el-icon>
                 <span v-if="!isMobile">{{ row.status === 'active' ? '禁用' : '激活' }}</span>
               </el-button>
-              <el-button
-                type="info"
-                size="small"
-                @click="handleResetPassword(row)"
-              >
+              <el-button type="info" size="small" @click="handleResetPassword(row)">
                 <el-icon><Lock /></el-icon>
                 <span v-if="!isMobile">重置密码</span>
               </el-button>
@@ -120,7 +112,7 @@
                 <el-icon><Delete /></el-icon>
                 <span v-if="!isMobile">删除</span>
               </el-button>
-            </el-button-group>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -289,6 +281,11 @@ import { useUserStore } from '@/stores/user'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const userStore = useUserStore()
+
+const isMobile = ref(window.innerWidth < 768)
+const handleResize = () => { isMobile.value = window.innerWidth < 768 }
+onMounted(() => window.addEventListener('resize', handleResize))
+onUnmounted(() => window.removeEventListener('resize', handleResize))
 
 // 响应式数据
 const loading = ref(false)
@@ -711,36 +708,19 @@ fetchUsers()
   background-color: #f5f7fa;
 }
 
-.button-group {
+.table-actions {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.button-group .el-button {
+.table-actions .el-button {
   margin: 0;
-  min-width: auto;
-  padding-left: 8px;
-  padding-right: 8px;
 }
 
 @media (max-width: 768px) {
-  .button-group {
-    flex-wrap: wrap;
+  .table-actions {
     justify-content: center;
-  }
-  
-  .button-group .el-button {
-    flex: 1;
-    min-width: 35px;
-    max-width: 50px;
-    padding-left: 4px;
-    padding-right: 4px;
-    font-size: 12px;
-  }
-  
-  .button-group .el-button span {
-    display: none;
   }
 }
 </style>

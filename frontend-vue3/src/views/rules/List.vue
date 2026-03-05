@@ -46,42 +46,26 @@
         <el-table-column prop="vuln_type" label="漏洞类型" :width="isMobile ? 80 : 100" />
         <el-table-column prop="description" label="描述" :min-width="isMobile ? 100 : 120" show-overflow-tooltip />
         <el-table-column prop="created_at" label="创建时间" :width="isMobile ? 120 : 150" />
-        <el-table-column label="操作" :width="isMobile ? 180 : 300" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? 160 : 260" fixed="right">
           <template #default="{ row }">
-            <el-button-group class="button-group">
-              <el-button
-                type="primary"
-                size="small"
-                @click="handleView(row)"
-              >
+            <div class="table-actions">
+              <el-button type="primary" size="small" @click="handleView(row)">
                 <el-icon><View /></el-icon>
                 <span v-if="!isMobile">查看</span>
               </el-button>
-              <el-button
-                type="success"
-                size="small"
-                @click="handleCopy(row.current_rule)"
-              >
+              <el-button type="success" size="small" @click="handleCopy(row.current_rule)">
                 <el-icon><DocumentCopy /></el-icon>
                 <span v-if="!isMobile">复制</span>
               </el-button>
-              <el-button
-                type="info"
-                size="small"
-                @click="handleValidate(row)"
-              >
+              <el-button type="info" size="small" @click="handleValidate(row)">
                 <el-icon><VideoPlay /></el-icon>
                 <span v-if="!isMobile">验证</span>
               </el-button>
-              <el-button
-                type="warning"
-                size="small"
-                @click="handleOptimize(row)"
-              >
+              <el-button type="warning" size="small" @click="handleOptimize(row)">
                 <el-icon><EditPen /></el-icon>
                 <span v-if="!isMobile">优化</span>
               </el-button>
-            </el-button-group>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -448,9 +432,19 @@ const handleView = (row: Rule) => {
 
 const handleCopy = async (ruleContent: string) => {
   try {
-    await navigator.clipboard.writeText(ruleContent)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(ruleContent)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = ruleContent
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'
+      document.body.appendChild(ta)
+      ta.focus(); ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
     ElMessage.success('已复制到剪贴板')
-  } catch (error) {
+  } catch {
     ElMessage.error('复制失败')
   }
 }
@@ -664,46 +658,25 @@ const handleSizeChange = (size: number) => {
   color: #303133;
 }
 
-.button-group {
+.table-actions {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.button-group .el-button {
+.table-actions .el-button {
   margin: 0;
-  min-width: auto;
-  padding-left: 8px;
-  padding-right: 8px;
 }
 
 @media (max-width: 768px) {
-  .button-group {
-    flex-wrap: wrap;
+  .table-actions {
     justify-content: center;
   }
-  
-  .button-group .el-button {
-    flex: 1;
-    min-width: 35px;
-    max-width: 50px;
-    padding-left: 4px;
-    padding-right: 4px;
-    font-size: 12px;
-  }
-  
-  .button-group .el-button span {
-    display: none;
-  }
-  
+
   .list-header {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-  }
-  
-  .el-form-item__content {
-    flex-wrap: wrap;
   }
 }
 </style>

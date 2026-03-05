@@ -87,14 +87,10 @@
         <!-- 功能测试 -->
         <div v-if="statusData.suricata_available" class="mt-20">
           <h3>功能测试</h3>
-          <el-button-group>
-            <el-button type="primary" @click="testRuleSyntax">
-              测试规则语法
-            </el-button>
-            <el-button type="info" @click="testRuleValidation">
-              测试规则验证
-            </el-button>
-          </el-button-group>
+          <div class="test-actions">
+            <el-button type="primary" @click="testRuleSyntax">测试规则语法</el-button>
+            <el-button type="info" @click="testRuleValidation">测试规则验证</el-button>
+          </div>
         </div>
       </div>
 
@@ -208,5 +204,10 @@ checkSuricataStatus()
 .no-data {
   text-align: center;
   padding: 40px 0;
+}
+
+.test-actions {
+  display: flex;
+  gap: 10px;
 }
 </style>

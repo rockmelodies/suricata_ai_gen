@@ -164,20 +164,12 @@
       <template #header>
         <div class="result-header">
           <span>✨ 生成结果 (ID: {{ ruleId }})</span>
-          <div>
-            <el-button
-              type="success"
-              size="small"
-              @click="handleCopy"
-            >
+          <div class="result-actions">
+            <el-button type="success" size="small" @click="handleCopy">
               <el-icon><DocumentCopy /></el-icon>
               复制规则
             </el-button>
-            <el-button
-              type="warning"
-              size="small"
-              @click="loadGeneratedRule"
-            >
+            <el-button type="warning" size="small" @click="loadGeneratedRule">
               <el-icon><DocumentCopy /></el-icon>
               加载到验证区
             </el-button>
@@ -469,9 +461,19 @@ const handleValidate = async () => {
 
 const handleCopy = async () => {
   try {
-    await navigator.clipboard.writeText(generatedRule.value)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(generatedRule.value)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = generatedRule.value
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'
+      document.body.appendChild(ta)
+      ta.focus(); ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
     ElMessage.success('已复制到剪贴板')
-  } catch (error) {
+  } catch {
     ElMessage.error('复制失败')
   }
 }
@@ -527,6 +529,11 @@ const handleReset = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.result-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .rule-result {
