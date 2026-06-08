@@ -297,10 +297,17 @@ cd backend
 source ../.venv/bin/activate
 python app_v2.py  # 或者 python app_with_auth.py
 
+# 后台运行
+nohup python3 app_v2.py > app.log 2>&1 &
+
 # 启动前端
 cd ../frontend-vue3
 npm install
 npm run dev
+
+# 后台运行
+nohup npm run dev > dev.log 2>&1 &
+
 ```
 
 **说明**: 我们提供了两个后端入口文件：
